@@ -85,6 +85,17 @@ TestCase {
         compare(names[1], "Screenshot from 2026-11-15 10-50-00 (1).png");
     }
 
+    function test_region_survives_the_handoff() {
+        const region = rect(15, 20, 640, 360);
+        compare(Logic.parseRegion(Logic.regionText(region)), region);
+    }
+
+    function test_file_url_encodes_each_path_segment() {
+        compare(Logic.fileUrl("/home/erick/Imagens/Screenshots/Screenshot from 2026-11-15 10-50-00 (1).png"),
+            "file:///home/erick/Imagens/Screenshots/Screenshot%20from%202026-11-15%2010-50-00%20(1).png");
+        compare(Logic.fileUrl("/tmp/a#b?.png"), "file:///tmp/a%23b%3F.png");
+    }
+
     function test_local_path_strips_scheme_and_decodes() {
         compare(Logic.localPath("file:///home/erick/Imagens"), "/home/erick/Imagens");
         compare(Logic.localPath("file:///home/erick/Minhas%20Imagens"), "/home/erick/Minhas Imagens");

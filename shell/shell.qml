@@ -1,16 +1,13 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtCore
 import Quickshell
-import Quickshell.Io
 import "logic.js" as Logic
 
 ShellRoot {
     id: root
 
     readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR")
-    readonly property string screenshotsDir: `${Logic.localPath(StandardPaths.writableLocation(StandardPaths.PicturesLocation))}/Screenshots`
     property int capturedScreens: 0
     readonly property bool captured: capturedScreens === Quickshell.screens.length
     property bool moving: false
@@ -25,9 +22,10 @@ ShellRoot {
         return `${runtimeDir}/mira-${Quickshell.processId}-${screenName}-frame.png`;
     }
 
-    function exit() {
+    function exit(keptFrame) {
         closing = true;
-        Quickshell.execDetached(["sh", "-c", 'rm -f "$1"/mira-"$2"-*-frame.png', "sh", runtimeDir, String(Quickshell.processId)]);
+        Quickshell.execDetached(["sh", "-c", 'for frame in "$1"/mira-"$2"-*-frame.png; do [ "$frame" = "$3" ] || rm -f "$frame"; done',
+            "sh", runtimeDir, String(Quickshell.processId), keptFrame ?? ""]);
         Quickshell.execDetached(["qs", "kill", "--pid", String(Quickshell.processId)]);
     }
 
@@ -38,14 +36,14 @@ ShellRoot {
 
     function frameSaved(screenName) {
         savedFrames[screenName] = true;
-        trySave();
+        tryHandOff();
     }
 
     function take(screenName, region) {
         if (shot || closing)
             return;
         shot = { screenName: screenName, region: region, stamp: Logic.stamp(new Date()) };
-        trySave();
+        tryHandOff();
     }
 
     function takeWholeScreen() {
@@ -54,40 +52,18 @@ ShellRoot {
             take(pointerScreen, { x: 0, y: 0, width: size.width, height: size.height });
     }
 
-    function trySave() {
+    function tryHandOff() {
         if (!shot || hidden || !savedFrames[shot.screenName])
             return;
         hidden = true;
-        saving.exec(["sh", Quickshell.shellPath("save.sh"), framePath(shot.screenName), screenshotsDir,
-            Logic.geometry(shot.region), ...Logic.candidates(shot.stamp)]);
-    }
-
-    Process {
-        id: saving
-        stdout: StdioCollector {
-            id: savedPath
-        }
-        stderr: StdioCollector {
-            id: savingErrors
-        }
-        onExited: code => {
-            if (code !== 0)
-                return root.fail(savingErrors.text.trim() || `save.sh exited with ${code}`);
-            copying.exec(["sh", "-c", 'wl-copy --type image/png < "$1"', "sh", savedPath.text.trim()]);
-        }
-    }
-
-    Process {
-        id: copying
-        stderr: StdioCollector {
-            id: copyingErrors
-        }
-        onExited: code => {
-            if (code !== 0)
-                console.error("mira: wl-copy:", copyingErrors.text.trim() || `exited with ${code}`);
-            console.log(savedPath.text.trim());
-            root.exit();
-        }
+        const frame = framePath(shot.screenName);
+        Quickshell.execDetached(["env",
+            `MIRA_FRAME=${frame}`,
+            `MIRA_REGION=${Logic.regionText(shot.region)}`,
+            `MIRA_SCREEN=${shot.screenName}`,
+            `MIRA_STAMP=${shot.stamp}`,
+            "sh", "-c", 'qs kill -p "$1" >/dev/null 2>&1; exec qs -p "$1"', "sh", Quickshell.shellPath("thumbnail.qml")]);
+        exit(frame);
     }
 
     Variants {

@@ -76,6 +76,19 @@ function candidates(stamp) {
     return Array.from({ length: maxNameAttempts }, (_, attempt) => fileName(stamp, attempt));
 }
 
+function regionText(region) {
+    return [region.x, region.y, region.width, region.height].join(",");
+}
+
+function parseRegion(text) {
+    const [x, y, width, height] = text.split(",").map(Number);
+    return { x: x, y: y, width: width, height: height };
+}
+
+function fileUrl(path) {
+    return "file://" + path.split("/").map(encodeURIComponent).join("/");
+}
+
 function localPath(url) {
     return decodeURIComponent(String(url).replace(/^file:\/\//, ""));
 }
