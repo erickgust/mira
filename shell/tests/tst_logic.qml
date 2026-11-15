@@ -121,6 +121,33 @@ TestCase {
         compare(Logic.readoutOrigin({ x: 1900, y: 500 }, { width: 90, height: 25 }, monitor), { x: 1794, y: 516 });
     }
 
+    function test_loupe_sits_above_right_of_the_cursor() {
+        compare(Logic.loupeOrigin({ x: 960, y: 540 }, { width: 1920, height: 1080 }, rect(1296, 736, 90, 25)), { x: 976, y: 404 });
+    }
+
+    function test_loupe_flips_on_both_axes_in_the_top_right_corner() {
+        compare(Logic.loupeOrigin({ x: 1880, y: 40 }, { width: 1920, height: 1080 }, null), { x: 1744, y: 56 });
+    }
+
+    function test_loupe_flipped_below_moves_aside_from_the_readout() {
+        compare(Logic.loupeOrigin({ x: 500, y: 40 }, { width: 1920, height: 1080 }, rect(516, 56, 90, 25)), { x: 364, y: 56 });
+    }
+
+    function test_loupe_moves_aside_from_a_readout_flipped_above() {
+        compare(Logic.loupeOrigin({ x: 500, y: 1070 }, { width: 1920, height: 1080 }, rect(516, 1029, 90, 25)), { x: 364, y: 934 });
+    }
+
+    function test_loupe_avoids_a_resting_readout_under_it() {
+        compare(Logic.loupeOrigin({ x: 960, y: 540 }, { width: 1920, height: 1080 }, rect(1000, 450, 90, 25)), { x: 824, y: 404 });
+    }
+
+    function test_loupe_shows_fifteen_real_pixels_centred_on_the_cursor() {
+        compare(Logic.loupeSource({ x: 960, y: 540 }, 1, 1920, 1080), rect(953, 533, 15, 15));
+        compare(Logic.loupeSource({ x: 1920, y: 0 }, 1, 1920, 1080), rect(1912, -7, 15, 15));
+        compare(Logic.loupeSource({ x: 11, y: 10 }, 1.5, 2880, 1620), rect(6, 8 / 1.5, 10, 10));
+        compare(Logic.loupeSource({ x: 100, y: 50 }, 2, 3840, 2160), rect(96.5, 46.5, 7.5, 7.5));
+    }
+
     function test_geometry_is_magick_crop_syntax() {
         compare(Logic.geometry(rect(15, 20, 640, 360)), "640x360+15+20");
     }

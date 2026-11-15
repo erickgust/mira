@@ -6,6 +6,9 @@ const readoutOffset = 16;
 const readoutEdgeMargin = 8;
 const handleReach = 8;
 const edgeHandleMinSide = 48;
+const loupeSize = 120;
+const loupePixels = 15;
+const loupeOffset = 16;
 
 function clamp(value, low, high) {
     return Math.min(Math.max(value, low), high);
@@ -95,6 +98,28 @@ function readoutOrigin(corner, size, monitor) {
             ? corner - readoutOffset - size
             : corner + readoutOffset);
     return { x: place(corner.x, size.width, monitor.width), y: place(corner.y, size.height, monitor.height) };
+}
+
+function overlaps(a, b) {
+    return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+function loupeOrigin(cursor, monitor, readout) {
+    const right = cursor.x + loupeOffset;
+    const left = cursor.x - loupeOffset - loupeSize;
+    const above = cursor.y - loupeOffset - loupeSize;
+    const below = cursor.y + loupeOffset;
+    const xs = right + loupeSize > monitor.width - readoutEdgeMargin ? [left, right] : [right, left];
+    const ys = above < readoutEdgeMargin ? [below, above] : [above, below];
+    const spots = [{ x: xs[0], y: ys[0] }, { x: xs[1], y: ys[0] }, { x: xs[0], y: ys[1] }, { x: xs[1], y: ys[1] }];
+    const fits = spot => spot.x >= 0 && spot.y >= 0 && spot.x + loupeSize <= monitor.width && spot.y + loupeSize <= monitor.height
+        && !(readout && overlaps({ x: spot.x, y: spot.y, width: loupeSize, height: loupeSize }, readout));
+    return spots.find(fits) ?? spots[0];
+}
+
+function loupeSource(point, scale, imageWidth, imageHeight) {
+    const start = (value, limit) => (Math.min(Math.floor(value * scale), limit - 1) - (loupePixels - 1) / 2) / scale;
+    return { x: start(point.x, imageWidth), y: start(point.y, imageHeight), width: loupePixels / scale, height: loupePixels / scale };
 }
 
 function toReal(logical, scale, imageWidth, imageHeight) {

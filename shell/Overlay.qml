@@ -272,6 +272,127 @@ PanelWindow {
             }
         }
 
+        Item {
+            readonly property var origin: overlay.pointer
+                ? Logic.loupeOrigin(overlay.pointer, overlay.monitor,
+                    readout.visible ? { x: readout.x, y: readout.y, width: readout.width, height: readout.height } : null)
+                : { x: 0, y: 0 }
+
+            visible: overlay.pointer !== null && overlay.session.pointerScreen === overlay.modelData.name
+            x: origin.x
+            y: origin.y
+            width: 120
+            height: 120
+
+            RectangularShadow {
+                anchors.fill: parent
+                radius: 12
+                offset.y: 2
+                blur: 8
+                color: "#33000000"
+            }
+
+            RectangularShadow {
+                anchors.fill: parent
+                radius: 12
+                offset.y: 1
+                blur: 1
+                color: "#40000000"
+            }
+
+            Item {
+                id: zoom
+                anchors.fill: parent
+                visible: false
+                layer.enabled: true
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: "#000000"
+                }
+
+                ShaderEffectSource {
+                    readonly property real pixelRatio: view.sourceSize.width / overlay.width || 1
+                    readonly property var region: overlay.pointer
+                        ? Logic.loupeSource(overlay.pointer, pixelRatio, view.sourceSize.width, view.sourceSize.height)
+                        : { x: 0, y: 0, width: 1, height: 1 }
+
+                    anchors.fill: parent
+                    sourceItem: view
+                    sourceRect: Qt.rect(region.x, region.y, region.width, region.height)
+                    textureSize: Qt.size(15, 15)
+                    smooth: false
+                }
+
+                Repeater {
+                    model: 15
+
+                    Rectangle {
+                        required property int index
+                        x: index * 8
+                        width: 1
+                        height: 120
+                        color: "#1f000000"
+                    }
+                }
+
+                Repeater {
+                    model: 15
+
+                    Rectangle {
+                        required property int index
+                        y: index * 8
+                        width: 120
+                        height: 1
+                        color: "#1f000000"
+                    }
+                }
+
+                Rectangle {
+                    x: 54
+                    y: 54
+                    width: 12
+                    height: 12
+                    color: "transparent"
+                    border.width: 1
+                    border.color: "#66000000"
+                }
+
+                Rectangle {
+                    x: 55
+                    y: 55
+                    width: 10
+                    height: 10
+                    color: "transparent"
+                    border.width: 1
+                    border.color: "#ffffff"
+                }
+            }
+
+            Rectangle {
+                id: loupeMask
+                anchors.fill: parent
+                radius: 12
+                visible: false
+                layer.enabled: true
+            }
+
+            MultiEffect {
+                anchors.fill: parent
+                source: zoom
+                maskEnabled: true
+                maskSource: loupeMask
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 12
+                color: "transparent"
+                border.width: 1
+                border.color: "#cc3d3d3d"
+            }
+        }
+
         MouseArea {
             anchors.fill: parent
             hoverEnabled: true
