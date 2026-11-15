@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>mira mock</title>
+<style>
+:root {
+  /* Screen */
+  --screen-w: 1920px;
+  --screen-h: 1080px;
+  --font-family: "Onest";
+
+  /* Overlay: dim over the frozen image, everywhere outside the selection */
+  --dim-color: #10101080;
+
+  /* Overlay: crosshair guide lines through the cursor, full width and height */
+  --crosshair-color: #ffffff59;
+  --crosshair-width: 1px;
+
+  /* Overlay: selection box border, drawn outside the selected pixels */
+  --selection-border-color: #ffffffff;
+  --selection-border-width: 1px;
+  --selection-outline-color: #00000040;
+  --selection-outline-width: 1px;
+  --selection-outline-shadow: 0px 0px 0px var(--selection-outline-width) var(--selection-outline-color);
+
+  /* Overlay: size readout next to the cursor */
+  --readout-bg: #1d1d1dff;
+  --readout-border-color: #3d3d3dcc;
+  --readout-border-width: 1px;
+  --readout-text: #f8f9f9ff;
+  --readout-separator-color: #f8f9f999;
+  --readout-font-size: 13px;
+  --readout-font-weight: 500;
+  --readout-line-height: 17px;
+  --readout-height: 25px;
+  --readout-padding-x: 10px;
+  --readout-padding-y: 3px;
+  --readout-radius: 13px;
+  --readout-offset-x: 16px;
+  --readout-offset-y: 16px;
+  --readout-edge-margin: 8px;
+  --readout-shadow: 0px 2px 8px 0px #00000033, 0px 1px 1px 0px #00000040;
+
+  /* Thumbnail card */
+  --thumb-max-width: 240px;
+  --thumb-max-height: 160px;
+  --thumb-min-side: 48px;
+  --thumb-margin-left: 10px;
+  --thumb-margin-bottom: 10px;
+  --thumb-radius: 12px;
+  --thumb-bg: #707070ff;
+  --thumb-border-color: #ffffff24;
+  --thumb-border-width: 1px;
+  --thumb-border: var(--thumb-border-width) solid var(--thumb-border-color);
+  --thumb-shadow:
+    0px 4px 40px 0px #0000001a,
+    0px 3px 20px 0px #0000001f,
+    0px 3px 12px 0px #00000026,
+    0px 2px 8px 0px #00000033,
+    0px 1px 1px 0px #00000040;
+  --thumb-scrim: #0000001a;
+  --thumb-scrim-hover: #00000080;
+  --thumb-label-text: #ffffffff;
+  --thumb-label-font-size: 13px;
+  --thumb-label-font-weight: 500;
+  --thumb-label-line-height: 17px;
+
+  /* Mock page only, not part of the design */
+  --mock-page-bg: #0b0b0bff;
+  --mock-label-height: 56px;
+  --mock-label-padding-x: 24px;
+  --mock-label-text: #f8f9f9ff;
+  --mock-label-note: #f8f9f999;
+  --mock-label-font-size: 15px;
+  --mock-label-font-weight: 500;
+
+  /* Stand-in desktop only, not part of the design */
+  --stage-wallpaper: url("file:///usr/share/pond-interface/wallpaper/included/coniston_samuel%20arkwright.jpg"), linear-gradient(160deg, #3d565eff 0%, #102025ff 100%);
+  --stage-sidebar-zone: 166px;
+  --stage-sidebar-margin: 10px;
+  --stage-sidebar-card-w: 156px;
+  --stage-sidebar-gap: 6px;
+  --stage-sidebar-radius: 16px;
+  --stage-sidebar-fill: linear-gradient(180deg, #102025cc 0%, #081015cc 100%);
+  --stage-sidebar-border: #99daee3d;
+  --stage-border-width: 1px;
+  --stage-window-gap: 16px;
+  --stage-window-radius: 12px;
+  --stage-window-bg: #1d1d1dff;
+  --stage-window-border: #3d3d3dcc;
+  --stage-window-bar: #262626ff;
+  --stage-window-bar-h: 40px;
+  --stage-text-strong: #ffffff33;
+  --stage-text-weak: #ffffff14;
+  --stage-accent: #cba6f7ff;
+  --stage-line-h: 10px;
+  --stage-line-gap: 18px;
+}
+</style>
+<!--
+SPEC NOTES (what a static frame cannot show)
+
+Units are logical pixels; multiply by the output scale for real pixels. Shadows use CSS
+semantics: offset-x offset-y blur spread colour, blur being the CSS blur radius.
+
+Overlay
+- Appears and disappears instantly, no fade: the frozen image must line up with the real
+  screen from the first frame, and the shot is taken on release.
+- Pointer cursor shape over the overlay: crosshair. mira draws no cursor of its own.
+- Draw order, bottom to top: frozen image, four dim rects around the selection
+  (one full-screen dim rect when idle), crosshair lines, selection border, readout.
+- Crosshair: one vertical line at x = cursor.x and one horizontal line at y = cursor.y,
+  each var(--crosshair-width) thick, spanning the whole monitor, drawn in idle and while
+  dragging, over both dimmed and undimmed areas.
+- Selection border: the selected rect is [x, x+w) by [y, y+h). The border sits on the
+  pixels just outside it, so it never covers captured pixels, plus a 1px dark outline
+  outside that (--selection-outline-shadow, a spread-only box shadow) so the white edge
+  reads on bright images. Holding Space moves the box; it looks the same.
+
+Readout
+- Idle (no drag yet): hidden. It shows only while a selection exists.
+- Text: "<w> × <h>" in selection pixels at the monitor's real resolution (logical × scale),
+  separator U+00D7 with one plain space either side, the "×" in --readout-separator-color.
+  Onest has no tabular figures, so the width follows the text; that is fine.
+- Size: height --readout-height (25px) fixed, width = text width + 2 × padding-x + 2 × border.
+- Position: anchored to the cursor, which is always the box's moving corner.
+  Default: readout's top-left = (cursor.x + offset-x, cursor.y + offset-y), i.e. below right.
+  Flip X: if cursor.x + offset-x + readout.width > monitor.width - edge-margin, place the
+  readout's right edge at cursor.x - offset-x.
+  Flip Y: if cursor.y + offset-y + readout.height > monitor.height - edge-margin, place the
+  readout's bottom edge at cursor.y - offset-y.
+  X and Y flip independently. Positions snap to whole logical pixels. No motion on flip.
+
+Thumbnail
+- Its own layer-shell surface on the monitor the shot came from, layer Overlay, anchored
+  bottom + left, margins left --thumb-margin-left and bottom --thumb-margin-bottom,
+  exclusive zone 0 (not -1), so it respects pond's sidebar exclusive zone and sits 10px
+  to the right of it (x = 166 + 10 with the sidebar expanded, 48 + 10 + 10 collapsed).
+  Bottom-aligned with the sidebar's bottom controls (both 10px from the bottom). No
+  keyboard focus.
+- Size rule: fit the shot inside a max box of --thumb-max-width × --thumb-max-height
+  (240 × 160), keeping aspect ratio, scale = min(240 / w, 160 / h), and never upscale a
+  shot smaller than the box (scale capped at 1). Round the card size to whole pixels.
+  Very wide or very tall shots: if the fitted short side would be under --thumb-min-side
+  (48px), the card's short side becomes 48px, the long side stays at the max (240 or 160),
+  and the image fills the card scaled to cover, centred and cropped.
+  Examples: 640×360 → 240×135; 1920×1080 → 240×135; 400×1080 → 59×160;
+  3000×200 → 240×48 (cover-cropped); 100×60 → 100×60.
+- Card: --thumb-bg behind the image (seen only while it decodes), image clipped to
+  --thumb-radius, then the scrim rect over the image, then the border drawn inside the
+  card edge over the image, shadow --thumb-shadow outside.
+- Rest: scrim --thumb-scrim. Hover: scrim --thumb-scrim-hover and the centred label
+  "Open" fade in together, 120ms, ease-out cubic (0.33, 1, 0.68, 1); same back out.
+  Pointer cursor shape on hover: pointer (hand). Click opens the file and closes the card
+  with the exit motion.
+- Enter: opacity 0 → 1 and translate-y +16px → 0, 220ms, cubic-bezier(0.2, 0, 0, 1).
+- Exit (timeout after 5000ms from enter start, or click): opacity 1 → 0, 120ms,
+  ease-out cubic (0.33, 1, 0.68, 1), no movement; the process exits when it finishes.
+- Replaced by a newer shot: the old card goes away at once with no exit motion and the new
+  one plays the enter motion.
+
+Where each reused value came from (pond-shell)
+- Font "Onest": shell/Theme.qml fontFamily.
+- --dim-color base #101010: shell/settings/Style.qml overlay (pond's dim behind settings);
+  alpha 0.5 is mine, lighter than pond's 0.7/0.8 overlayOpacity so the frozen screen
+  stays readable.
+- --readout-bg #1d1d1d: shell/themes/Unthemed.qml surface / card.
+- --readout-border-color #3d3d3d at 0.8: shell/themes/Unthemed.qml panelBorder
+  (Qt.alpha(border, 0.8), border #3D3D3D).
+- --readout-text #f8f9f9: shell/themes/Unthemed.qml sidebarForeground / notificationText.
+- --readout-font-size 13, weight 500 (Medium), --readout-height 25, --readout-radius 13:
+  Pond/Screenshot/Preview.qml, the "Copy'd" tag (height 25, radius 13, Onest 13 Medium).
+- --thumb-radius 12, --thumb-bg #707070, --thumb-border 1px #ffffff24, --thumb-shadow
+  (the five layers blur/offset/opacity 40/4/0.10, 20/3/0.12, 12/3/0.15, 8/2/0.20, 1/1/0.25),
+  --thumb-scrim 0.1 black, --thumb-scrim-hover 0.5 black, hover timing 120ms OutCubic:
+  /usr/lib/qt6/qml/Pond/Screenshot/Preview.qml.
+- --thumb-margin-left / --thumb-margin-bottom 10: shell/Theme.qml sidebarOuterMargin,
+  also the sidebar bottom stack's bottomMargin in shell/Sidebar.qml.
+- Enter 220ms: shell/PanelStyle.qml openDuration; easing (0.2, 0, 0, 1): shell/Motion.qml.
+- Exit 120ms: shell/PanelStyle.qml controlDuration.
+- Stand-in desktop: sidebar geometry from shell/Theme.qml (margin 10, card width 156,
+  gap 6, radius 16), its fill from shell/themes/North.qml panelGradient (active theme),
+  wallpaper from /usr/share/pond-interface/wallpaper/included/.
+-->
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--mock-page-bg); width: var(--screen-w); font-family: var(--font-family); }
+
+.label {
+  height: var(--mock-label-height);
+  padding: 0 var(--mock-label-padding-x);
+  display: flex; align-items: center; gap: var(--mock-label-padding-x);
+  color: var(--mock-label-text);
+  font-size: var(--mock-label-font-size);
+  font-weight: var(--mock-label-font-weight);
+}
+.label span { color: var(--mock-label-note); }
+
+.frame { position: relative; width: var(--screen-w); height: var(--screen-h); overflow: hidden; }
+.abs { position: absolute; }
+
+.stage { position: absolute; left: 0; top: 0; width: var(--screen-w); height: var(--screen-h); background: var(--stage-wallpaper); background-size: cover; background-position: center; }
+.sb-card { position: absolute; left: var(--stage-sidebar-margin); width: var(--stage-sidebar-card-w); border-radius: var(--stage-sidebar-radius); background: var(--stage-sidebar-fill); border: var(--stage-border-width) solid var(--stage-sidebar-border); }
+.sb-clock { top: var(--stage-sidebar-margin); height: calc(var(--stage-window-bar-h) + var(--stage-line-gap)); }
+.sb-ws { top: calc(var(--stage-sidebar-margin) + var(--stage-window-bar-h) + var(--stage-line-gap) + var(--stage-sidebar-gap)); height: calc(var(--stage-window-bar-h) * 5); }
+.sb-controls { bottom: var(--stage-sidebar-margin); height: var(--stage-window-bar-h); }
+.window { position: absolute; border-radius: var(--stage-window-radius); background: var(--stage-window-bg); border: var(--stage-border-width) solid var(--stage-window-border); overflow: hidden; }
+.win-a { left: calc(var(--stage-sidebar-zone) + var(--stage-window-gap)); top: var(--stage-window-gap); width: calc(var(--stage-window-bar-h) * 22); bottom: var(--stage-window-gap); }
+.win-b { left: calc(var(--stage-sidebar-zone) + var(--stage-window-gap) * 2 + var(--stage-window-bar-h) * 22); top: var(--stage-window-gap); width: calc(var(--stage-window-bar-h) * 14); height: calc(var(--stage-window-bar-h) * 16); }
+.win-bar { height: var(--stage-window-bar-h); background: var(--stage-window-bar); }
+.lines { padding: var(--stage-line-gap); display: flex; flex-direction: column; gap: var(--stage-line-gap); }
+.line { height: var(--stage-line-h); border-radius: var(--stage-line-h); background: var(--stage-text-weak); }
+.line.strong { background: var(--stage-text-strong); }
+.line.accent { background: var(--stage-accent); }
+
+.dim { position: absolute; background: var(--dim-color); }
+.dim-full { left: 0; top: 0; width: var(--screen-w); height: var(--screen-h); }
+.dim-top { left: 0; top: 0; width: var(--screen-w); height: var(--sy); }
+.dim-bottom { left: 0; top: calc(var(--sy) + var(--sh)); width: var(--screen-w); bottom: 0; }
+.dim-left { left: 0; top: var(--sy); width: var(--sx); height: var(--sh); }
+.dim-right { left: calc(var(--sx) + var(--sw)); top: var(--sy); right: 0; height: var(--sh); }
+
+.cross-v { position: absolute; left: var(--cx); top: 0; width: var(--crosshair-width); height: var(--screen-h); background: var(--crosshair-color); }
+.cross-h { position: absolute; left: 0; top: var(--cy); width: var(--screen-w); height: var(--crosshair-width); background: var(--crosshair-color); }
+
+.selection {
+  position: absolute;
+  left: calc(var(--sx) - var(--selection-border-width));
+  top: calc(var(--sy) - var(--selection-border-width));
+  width: calc(var(--sw) + var(--selection-border-width) * 2);
+  height: calc(var(--sh) + var(--selection-border-width) * 2);
+  border: var(--selection-border-width) solid var(--selection-border-color);
+  box-shadow: var(--selection-outline-shadow);
+}
+
+.readout {
+  position: absolute;
+  height: var(--readout-height);
+  padding: var(--readout-padding-y) var(--readout-padding-x);
+  border: var(--readout-border-width) solid var(--readout-border-color);
+  border-radius: var(--readout-radius);
+  background: var(--readout-bg);
+  box-shadow: var(--readout-shadow);
+  color: var(--readout-text);
+  font-family: var(--font-family);
+  font-size: var(--readout-font-size);
+  font-weight: var(--readout-font-weight);
+  line-height: var(--readout-line-height);
+  white-space: pre;
+  left: calc(var(--cx) + var(--readout-offset-x));
+  top: calc(var(--cy) + var(--readout-offset-y));
+}
+.readout.flip-x { left: auto; right: calc(var(--screen-w) - var(--cx) + var(--readout-offset-x)); }
+.readout.flip-y { top: auto; bottom: calc(var(--screen-h) - var(--cy) + var(--readout-offset-y)); }
+.readout .sep { color: var(--readout-separator-color); }
+
+.thumb {
+  position: absolute;
+  left: calc(var(--stage-sidebar-zone) + var(--thumb-margin-left));
+  bottom: var(--thumb-margin-bottom);
+  width: var(--tw);
+  height: var(--th);
+  border-radius: var(--thumb-radius);
+  background: var(--thumb-bg);
+  box-shadow: var(--thumb-shadow);
+  overflow: hidden;
+}
+.thumb-image { position: absolute; left: 0; top: 0; width: var(--screen-w); height: var(--screen-h); transform-origin: 0 0; transform: scale(var(--shot-scale)) translate(calc(var(--sx) * -1), calc(var(--sy) * -1)); }
+.thumb-scrim { position: absolute; inset: 0; background: var(--thumb-scrim); }
+.thumb-border { position: absolute; inset: 0; border-radius: var(--thumb-radius); border: var(--thumb-border); }
+.thumb-label { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; color: var(--thumb-label-text); font-size: var(--thumb-label-font-size); font-weight: var(--thumb-label-font-weight); line-height: var(--thumb-label-line-height); }
+.thumb.hover .thumb-scrim { background: var(--thumb-scrim-hover); }
+.thumb.hover .thumb-label { display: flex; }
+</style>
+</head>
+<body>
+
+<template id="desktop">
+  <div class="stage">
+    <div class="sb-card sb-clock"></div>
+    <div class="sb-card sb-ws"></div>
+    <div class="sb-card sb-controls"></div>
+    <div class="window win-a">
+      <div class="win-bar"></div>
+      <div class="lines">
+        <div class="line strong" style="width:40%"></div>
+        <div class="line" style="width:86%"></div>
+        <div class="line" style="width:72%"></div>
+        <div class="line" style="width:80%"></div>
+        <div class="line accent" style="width:22%"></div>
+        <div class="line" style="width:64%"></div>
+        <div class="line" style="width:90%"></div>
+        <div class="line" style="width:58%"></div>
+        <div class="line strong" style="width:34%"></div>
+        <div class="line" style="width:76%"></div>
+        <div class="line" style="width:84%"></div>
+        <div class="line" style="width:68%"></div>
+        <div class="line" style="width:88%"></div>
+        <div class="line" style="width:52%"></div>
+        <div class="line accent" style="width:18%"></div>
+        <div class="line" style="width:74%"></div>
+        <div class="line" style="width:82%"></div>
+        <div class="line" style="width:60%"></div>
+        <div class="line strong" style="width:44%"></div>
+        <div class="line" style="width:78%"></div>
+        <div class="line" style="width:70%"></div>
+        <div class="line" style="width:86%"></div>
+        <div class="line" style="width:56%"></div>
+        <div class="line" style="width:80%"></div>
+      </div>
+    </div>
+    <div class="window win-b">
+      <div class="win-bar"></div>
+      <div class="lines">
+        <div class="line strong" style="width:55%"></div>
+        <div class="line" style="width:90%"></div>
+        <div class="line" style="width:76%"></div>
+        <div class="line accent" style="width:30%"></div>
+        <div class="line" style="width:84%"></div>
+        <div class="line" style="width:62%"></div>
+        <div class="line" style="width:88%"></div>
+        <div class="line strong" style="width:40%"></div>
+        <div class="line" style="width:70%"></div>
+        <div class="line" style="width:82%"></div>
+        <div class="line" style="width:66%"></div>
+        <div class="line" style="width:78%"></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<div class="label">1 · Overlay, idle <span>full dim, crosshair through cursor at (960, 540), readout hidden</span></div>
+<div class="frame" data-desktop style="--cx:960px; --cy:540px;">
+  <div class="dim dim-full"></div>
+  <div class="cross-v"></div>
+  <div class="cross-h"></div>
+</div>
+
+<div class="label">2 · Overlay, dragging <span>selection (640, 360) 640 × 360, cursor at moving corner (1280, 720), readout below right</span></div>
+<div class="frame" data-desktop style="--sx:640px; --sy:360px; --sw:640px; --sh:360px; --cx:1280px; --cy:720px;">
+  <div class="dim dim-top"></div>
+  <div class="dim dim-bottom"></div>
+  <div class="dim dim-left"></div>
+  <div class="dim dim-right"></div>
+  <div class="cross-v"></div>
+  <div class="cross-h"></div>
+  <div class="selection"></div>
+  <div class="readout">640 <span class="sep">×</span> 360</div>
+</div>
+
+<div class="label">3 · Overlay, readout near an edge <span>selection (1260, 706) 640 × 360, cursor at (1900, 1066), readout flipped on both axes</span></div>
+<div class="frame" data-desktop style="--sx:1260px; --sy:706px; --sw:640px; --sh:360px; --cx:1900px; --cy:1066px;">
+  <div class="dim dim-top"></div>
+  <div class="dim dim-bottom"></div>
+  <div class="dim dim-left"></div>
+  <div class="dim dim-right"></div>
+  <div class="cross-v"></div>
+  <div class="cross-h"></div>
+  <div class="selection"></div>
+  <div class="readout flip-x flip-y">640 <span class="sep">×</span> 360</div>
+</div>
+
+<div class="label">4 · Thumbnail, rest <span>shot from frame 2 fitted to 240 × 135, 10px right of the sidebar zone, 10px from bottom</span></div>
+<div class="frame" data-desktop>
+  <div class="thumb" style="--tw:240px; --th:135px; --sx:640px; --sy:360px; --shot-scale:0.375;">
+    <div class="thumb-image" data-desktop></div>
+    <div class="thumb-scrim"></div>
+    <div class="thumb-label">Open</div>
+    <div class="thumb-border"></div>
+  </div>
+</div>
+
+<div class="label">5 · Thumbnail, hover <span>scrim 0.5 black and "Open" label, pointer cursor; click opens the file</span></div>
+<div class="frame" data-desktop>
+  <div class="thumb hover" style="--tw:240px; --th:135px; --sx:640px; --sy:360px; --shot-scale:0.375;">
+    <div class="thumb-image" data-desktop></div>
+    <div class="thumb-scrim"></div>
+    <div class="thumb-label">Open</div>
+    <div class="thumb-border"></div>
+  </div>
+</div>
+
+<script>
+const desktop = document.getElementById("desktop");
+document.querySelectorAll("[data-desktop]").forEach(el => el.prepend(desktop.content.cloneNode(true)));
+</script>
+</body>
+</html>
