@@ -4,6 +4,12 @@ const maxNameAttempts = 100;
 const minSide = 4;
 const readoutOffset = 16;
 const readoutEdgeMargin = 8;
+const handleReach = 8;
+const edgeHandleMinSide = 48;
+
+function clamp(value, low, high) {
+    return Math.min(Math.max(value, low), high);
+}
 
 function snap(position, bounds) {
     return {
@@ -22,10 +28,52 @@ function resizeDrag(drag, to) {
 
 function shiftDrag(drag, by, bounds) {
     const rect = dragRect(drag);
-    const dx = Math.min(Math.max(by.x, -rect.x), bounds.width - rect.x - rect.width);
-    const dy = Math.min(Math.max(by.y, -rect.y), bounds.height - rect.y - rect.height);
-    const move = point => ({ x: point.x + dx, y: point.y + dy });
+    const moved = moveRect(rect, by, bounds);
+    const move = point => ({ x: point.x + moved.x - rect.x, y: point.y + moved.y - rect.y });
     return { anchor: move(drag.anchor), corner: move(drag.corner) };
+}
+
+function moveRect(rect, by, bounds) {
+    return {
+        x: clamp(rect.x + by.x, 0, bounds.width - rect.width),
+        y: clamp(rect.y + by.y, 0, bounds.height - rect.height),
+        width: rect.width,
+        height: rect.height
+    };
+}
+
+function resizeRect(rect, handle, by, bounds) {
+    const right = rect.x + rect.width;
+    const bottom = rect.y + rect.height;
+    const left = handle.includes("l") ? clamp(rect.x + by.x, 0, right - minSide) : rect.x;
+    const top = handle.includes("t") ? clamp(rect.y + by.y, 0, bottom - minSide) : rect.y;
+    const newRight = handle.includes("r") ? clamp(right + by.x, left + minSide, bounds.width) : right;
+    const newBottom = handle.includes("b") ? clamp(bottom + by.y, top + minSide, bounds.height) : bottom;
+    return { x: left, y: top, width: newRight - left, height: newBottom - top };
+}
+
+function handles(rect) {
+    return ["tl", "tr", "br", "bl"].concat(
+        rect.width >= edgeHandleMinSide ? ["t", "b"] : [],
+        rect.height >= edgeHandleMinSide ? ["l", "r"] : []);
+}
+
+function handleCentre(rect, handle) {
+    const along = (start, size, before, after) => handle.includes(before) ? start - 0.5
+        : handle.includes(after) ? start + size + 0.5
+        : start + size / 2;
+    return { x: along(rect.x, rect.width, "l", "r"), y: along(rect.y, rect.height, "t", "b") };
+}
+
+function hitTest(rect, point) {
+    if (!rect || !point)
+        return "outside";
+    const near = handle => {
+        const centre = handleCentre(rect, handle);
+        return Math.abs(point.x - centre.x) <= handleReach && Math.abs(point.y - centre.y) <= handleReach;
+    };
+    const inside = point.x >= rect.x && point.x < rect.x + rect.width && point.y >= rect.y && point.y < rect.y + rect.height;
+    return handles(rect).find(near) ?? (inside ? "inside" : "outside");
 }
 
 function dragRect(drag) {

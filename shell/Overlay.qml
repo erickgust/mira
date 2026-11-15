@@ -15,34 +15,49 @@ PanelWindow {
     property Region passThrough: Region {}
     property var pointer: null
     property var drag: null
+    property var gesture: null
+    readonly property bool crosshair: pointer !== null && (gesture !== null || selection === null)
     readonly property var monitor: ({ width: width, height: height })
-    readonly property var selection: drag ? Logic.dragRect(drag) : null
-    readonly property var realSelection: selection ? toReal(selection) : null
+    readonly property var owned: session.box && session.box.screenName === modelData.name ? session.box : null
+    readonly property var selection: owned ? owned.rect : null
+    readonly property var realSelection: owned ? owned.region : null
+    readonly property string hover: gesture ? gesture.handle : Logic.hitTest(selection, pointer)
 
     function toReal(rect) {
         const size = view.sourceSize;
         return Logic.toReal(rect, size.width / width, size.width, size.height);
     }
 
+    function setBox(rect) {
+        session.box = { screenName: modelData.name, rect: rect, region: toReal(rect) };
+    }
+
     function track(mouse) {
         const at = Logic.snap({ x: mouse.x, y: mouse.y }, monitor);
         session.pointerScreen = modelData.name;
-        if (drag && mouse.buttons & Qt.LeftButton)
-            drag = session.moving
-                ? Logic.shiftDrag(drag, { x: at.x - pointer.x, y: at.y - pointer.y }, monitor)
-                : Logic.resizeDrag(drag, at);
+        if (gesture && mouse.buttons & Qt.LeftButton)
+            follow(at);
         pointer = at;
     }
 
-    function release() {
-        if (!drag)
-            return;
-        const region = realSelection;
-        if (!Logic.bigEnough(region)) {
-            drag = null;
-            return;
-        }
-        session.take(modelData.name, region);
+    function follow(at) {
+        const by = { x: at.x - gesture.at.x, y: at.y - gesture.at.y };
+        if (gesture.handle === "inside")
+            return setBox(Logic.moveRect(gesture.from, by, monitor));
+        if (gesture.handle !== "outside")
+            return setBox(Logic.resizeRect(gesture.from, gesture.handle, by, monitor));
+        drag = session.moving
+            ? Logic.shiftDrag(drag, { x: at.x - pointer.x, y: at.y - pointer.y }, monitor)
+            : Logic.resizeDrag(drag, at);
+        const drawn = Logic.dragRect(drag);
+        if (Logic.bigEnough(toReal(drawn)))
+            setBox(drawn);
+    }
+
+    function press(mouse) {
+        track(mouse);
+        gesture = { handle: hover, from: selection, at: pointer };
+        drag = Logic.startDrag(pointer);
     }
 
     screen: modelData
@@ -73,7 +88,7 @@ PanelWindow {
             else if (event.key === Qt.Key_Space)
                 overlay.session.moving = true;
             else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
-                overlay.session.takeWholeScreen();
+                overlay.session.confirm();
         }
         Keys.onReleased: event => {
             if (!event.isAutoRepeat && event.key === Qt.Key_Space)
@@ -128,7 +143,7 @@ PanelWindow {
         }
 
         Rectangle {
-            visible: overlay.pointer !== null
+            visible: overlay.crosshair
             x: overlay.pointer ? overlay.pointer.x : 0
             width: 1
             height: overlay.height
@@ -136,7 +151,7 @@ PanelWindow {
         }
 
         Rectangle {
-            visible: overlay.pointer !== null
+            visible: overlay.crosshair
             y: overlay.pointer ? overlay.pointer.y : 0
             width: overlay.width
             height: 1
@@ -165,14 +180,52 @@ PanelWindow {
             border.color: "#ffffff"
         }
 
+        Repeater {
+            model: overlay.selection ? Logic.handles(overlay.selection) : []
+
+            Item {
+                required property string modelData
+                readonly property var centre: Logic.handleCentre(overlay.selection, modelData)
+
+                x: centre.x - width / 2
+                y: centre.y - height / 2
+                width: 8
+                height: 8
+
+                RectangularShadow {
+                    anchors.fill: parent
+                    radius: 4
+                    offset.y: 1
+                    blur: 2
+                    color: "#40000000"
+                }
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 10
+                    height: 10
+                    radius: 5
+                    color: "#40000000"
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 4
+                    color: "#ffffff"
+                }
+            }
+        }
+
         Item {
             id: readout
 
-            readonly property var origin: overlay.drag
-                ? Logic.readoutOrigin(overlay.drag.corner, { width: width, height: height }, overlay.monitor)
+            readonly property var sel: overlay.selection
+            readonly property var origin: sel
+                ? Logic.readoutOrigin(overlay.gesture ? overlay.pointer : { x: sel.x + sel.width, y: sel.y + sel.height },
+                    { width: width, height: height }, overlay.monitor)
                 : { x: 0, y: 0 }
 
-            visible: overlay.drag !== null
+            visible: sel !== null
             x: origin.x
             y: origin.y
             width: label.implicitWidth + 2 * 10 + 2
@@ -223,13 +276,28 @@ PanelWindow {
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton
-            cursorShape: Qt.CrossCursor
+            cursorShape: ({
+                    outside: Qt.CrossCursor,
+                    inside: Qt.SizeAllCursor,
+                    tl: Qt.SizeFDiagCursor,
+                    br: Qt.SizeFDiagCursor,
+                    tr: Qt.SizeBDiagCursor,
+                    bl: Qt.SizeBDiagCursor,
+                    l: Qt.SizeHorCursor,
+                    r: Qt.SizeHorCursor,
+                    t: Qt.SizeVerCursor,
+                    b: Qt.SizeVerCursor
+                })[overlay.hover]
             onPositionChanged: mouse => overlay.track(mouse)
-            onPressed: mouse => {
-                overlay.track(mouse);
-                overlay.drag = Logic.startDrag(overlay.pointer);
+            onPressed: mouse => overlay.press(mouse)
+            onReleased: {
+                overlay.gesture = null;
+                overlay.drag = null;
             }
-            onReleased: overlay.release()
+            onDoubleClicked: {
+                if (overlay.hover === "inside")
+                    overlay.session.confirm();
+            }
         }
     }
 }

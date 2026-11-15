@@ -9,6 +9,10 @@ TestCase {
         return { x: x, y: y, width: width, height: height };
     }
 
+    function test_hit_test_without_a_pointer_is_outside() {
+        compare(Logic.hitTest(rect(0, 0, 100, 100), null), "outside");
+    }
+
     function test_real_pixels_at_scale_one_match_logical() {
         compare(Logic.toReal(rect(100, 50, 640, 360), 1, 1920, 1080), rect(100, 50, 640, 360));
     }
@@ -40,6 +44,58 @@ TestCase {
     function test_moving_keeps_the_corner_under_the_pointer_side() {
         const drag = Logic.resizeDrag(Logic.startDrag({ x: 100, y: 100 }), { x: 300, y: 200 });
         compare(Logic.shiftDrag(drag, { x: 10, y: 10 }, { width: 1920, height: 1080 }).corner, { x: 310, y: 210 });
+    }
+
+    function test_handles_win_over_inside_and_outside() {
+        const box = rect(640, 360, 640, 360);
+        compare(Logic.hitTest(box, { x: 640, y: 360 }), "tl");
+        compare(Logic.hitTest(box, { x: 647, y: 367 }), "tl");
+        compare(Logic.hitTest(box, { x: 632, y: 352 }), "tl");
+        compare(Logic.hitTest(box, { x: 1287, y: 720 }), "br");
+        compare(Logic.hitTest(box, { x: 1280, y: 540 }), "r");
+        compare(Logic.hitTest(box, { x: 960, y: 355 }), "t");
+        compare(Logic.hitTest(box, { x: 960, y: 540 }), "inside");
+        compare(Logic.hitTest(box, { x: 648, y: 368 }), "inside");
+        compare(Logic.hitTest(box, { x: 631, y: 540 }), "outside");
+        compare(Logic.hitTest(null, { x: 960, y: 540 }), "outside");
+    }
+
+    function test_edge_handles_hide_on_short_sides() {
+        compare(Logic.handles(rect(0, 0, 47, 100)), ["tl", "tr", "br", "bl", "l", "r"]);
+        compare(Logic.handles(rect(0, 0, 100, 47)), ["tl", "tr", "br", "bl", "t", "b"]);
+        compare(Logic.hitTest(rect(100, 100, 40, 40), { x: 120, y: 98 }), "outside");
+    }
+
+    function test_handles_sit_on_the_border_line() {
+        const box = rect(640, 360, 640, 360);
+        compare(Logic.handleCentre(box, "tl"), { x: 639.5, y: 359.5 });
+        compare(Logic.handleCentre(box, "r"), { x: 1280.5, y: 540 });
+        compare(Logic.handleCentre(box, "b"), { x: 960, y: 720.5 });
+    }
+
+    function test_resizing_moves_only_the_dragged_sides() {
+        const monitor = { width: 1920, height: 1080 };
+        const box = rect(640, 360, 640, 360);
+        compare(Logic.resizeRect(box, "r", { x: 120, y: 50 }, monitor), rect(640, 360, 760, 360));
+        compare(Logic.resizeRect(box, "tl", { x: -40, y: -60 }, monitor), rect(600, 300, 680, 420));
+        compare(Logic.resizeRect(box, "b", { x: 99, y: -10 }, monitor), rect(640, 360, 640, 350));
+    }
+
+    function test_resizing_stops_at_the_monitor_and_four_pixels_short_of_the_far_side() {
+        const monitor = { width: 1920, height: 1080 };
+        const box = rect(640, 360, 640, 360);
+        compare(Logic.resizeRect(box, "br", { x: 5000, y: 5000 }, monitor), rect(640, 360, 1280, 720));
+        compare(Logic.resizeRect(box, "tl", { x: -5000, y: -5000 }, monitor), rect(0, 0, 1280, 720));
+        compare(Logic.resizeRect(box, "l", { x: 5000, y: 0 }, monitor), rect(1276, 360, 4, 360));
+        compare(Logic.resizeRect(box, "t", { x: 0, y: 5000 }, monitor), rect(640, 716, 640, 4));
+        compare(Logic.resizeRect(box, "br", { x: -5000, y: -5000 }, monitor), rect(640, 360, 4, 4));
+    }
+
+    function test_moving_a_box_keeps_its_size_inside_the_monitor() {
+        const monitor = { width: 1920, height: 1080 };
+        const box = rect(640, 360, 640, 360);
+        compare(Logic.moveRect(box, { x: 10, y: -20 }, monitor), rect(650, 340, 640, 360));
+        compare(Logic.moveRect(box, { x: 5000, y: -5000 }, monitor), rect(1280, 0, 640, 360));
     }
 
     function test_pointer_snaps_to_whole_pixels_inside_the_monitor() {

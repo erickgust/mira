@@ -11,6 +11,7 @@ ShellRoot {
     property int capturedScreens: 0
     readonly property bool captured: capturedScreens === Quickshell.screens.length
     property bool moving: false
+    property var box: null
     property string pointerScreen: Quickshell.screens[0].name
     property bool closing: false
     property bool hidden: false
@@ -44,6 +45,13 @@ ShellRoot {
             return;
         shot = { screenName: screenName, region: region, stamp: Logic.stamp(new Date()) };
         tryHandOff();
+    }
+
+    function confirm() {
+        if (box)
+            take(box.screenName, box.region);
+        else
+            takeWholeScreen();
     }
 
     function takeWholeScreen() {
