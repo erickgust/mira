@@ -15,12 +15,12 @@ HOME="$home" sh "$repo/install.sh" >/dev/null
 
 target="$home/.local/share/mira"
 launcher="$home/.local/bin/mira"
-for file in shell.qml thumbnail.qml Overlay.qml logic.js save.sh; do
+for file in shell.qml thumbnail.qml record.qml Overlay.qml logic.js save.sh claim.sh finish.sh; do
     [ -f "$target/$file" ] || fail "$file was not installed"
 done
 [ ! -e "$target/tests" ] || fail "tests were installed"
 [ ! -e "$target/stale" ] || fail "an old install was not replaced"
 [ -x "$launcher" ] || fail "launcher is not executable"
-[ "$(sed -n 2p "$launcher")" = 'exec qs -n -p "$HOME/.local/share/mira"' ] || fail "launcher runs the wrong command"
+[ "$(sed -n 2p "$launcher")" = 'qs ipc -p "$HOME/.local/share/mira/record.qml" call recording stop >/dev/null 2>&1 || exec qs -n -p "$HOME/.local/share/mira"' ] || fail "launcher runs the wrong command"
 
 echo "install.sh: all checks passed"

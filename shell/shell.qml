@@ -11,6 +11,7 @@ ShellRoot {
     property int capturedScreens: 0
     readonly property bool captured: capturedScreens === Quickshell.screens.length
     property bool moving: false
+    property bool recordMode: false
     property var box: null
     property string pointerScreen: Quickshell.screens[0].name
     property bool closing: false
@@ -40,16 +41,16 @@ ShellRoot {
         tryHandOff();
     }
 
-    function take(screenName, region) {
+    function take(screenName, region, rect) {
         if (shot || closing)
             return;
-        shot = { screenName: screenName, region: region, stamp: Logic.stamp(new Date()) };
+        shot = { screenName: screenName, region: region, rect: rect, record: recordMode, stamp: Logic.stamp(new Date()) };
         tryHandOff();
     }
 
     function confirm() {
         if (box)
-            take(box.screenName, box.region);
+            take(box.screenName, box.region, box.rect);
         else
             takeWholeScreen();
     }
@@ -57,7 +58,7 @@ ShellRoot {
     function takeWholeScreen() {
         const size = frameSizes[pointerScreen];
         if (size)
-            take(pointerScreen, { x: 0, y: 0, width: size.width, height: size.height });
+            take(pointerScreen, { x: 0, y: 0, width: size.width, height: size.height }, null);
     }
 
     function tryHandOff() {
@@ -65,6 +66,17 @@ ShellRoot {
             return;
         hidden = true;
         const frame = framePath(shot.screenName);
+        if (shot.record) {
+            Quickshell.execDetached(["env",
+                `MIRA_FRAME=${frame}`,
+                `MIRA_REGION=${Logic.regionText(shot.region)}`,
+                `MIRA_RECT=${shot.rect ? Logic.regionText(shot.rect) : ""}`,
+                `MIRA_SCREEN=${shot.screenName}`,
+                `MIRA_STAMP=${shot.stamp}`,
+                "qs", "-p", Quickshell.shellPath("record.qml")]);
+            exit(frame);
+            return;
+        }
         Quickshell.execDetached(["env",
             `MIRA_FRAME=${frame}`,
             `MIRA_REGION=${Logic.regionText(shot.region)}`,

@@ -148,12 +148,47 @@ function duration(seconds) {
     return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds % 60)}` : `${minutes}:${pad(seconds % 60)}`;
 }
 
-function fileName(stamp, attempt) {
-    return attempt === 0 ? `Screenshot from ${stamp}.png` : `Screenshot from ${stamp} (${attempt}).png`;
+function fileName(stamp, attempt, kind = "Screenshot", extension = "png") {
+    return attempt === 0 ? `${kind} from ${stamp}.${extension}` : `${kind} from ${stamp} (${attempt}).${extension}`;
 }
 
-function candidates(stamp) {
-    return Array.from({ length: maxNameAttempts }, (_, attempt) => fileName(stamp, attempt));
+function candidates(stamp, kind, extension) {
+    return Array.from({ length: maxNameAttempts }, (_, attempt) => fileName(stamp, attempt, kind, extension));
+}
+
+const vaapiMinSide = 128;
+
+function recorderArgs(output, rect, real, file) {
+    const base = ["-o", output];
+    if (real.width < vaapiMinSide || real.height < vaapiMinSide)
+        return [...base, "-D", "-r", "60", "-g", `${rect.x},${rect.y} ${rect.width}x${rect.height}`, "-f", file];
+    const vaapi = [...base, "-c", "h264_vaapi", "-d", "/dev/dri/renderD128", "-r", "60",
+        "-p", "colorspace=bt709", "-p", "color_primaries=bt709", "-p", "color_trc=bt709", "-p", "color_range=tv"];
+    if (!rect)
+        return [...vaapi, "-F", "scale_vaapi=format=nv12:out_range=limited", "-f", file];
+    const even = value => value - value % 2;
+    const [x, width, height] = [even(real.x), even(real.width), even(real.height)];
+    return [...vaapi,
+        "-g", `0,${rect.y} ${rect.x + rect.width}x${rect.height}`,
+        "-F", `crop=${width}:${height}:${x}:0,scale_vaapi=w=${width}:h=${height}:format=nv12:out_range=limited,setsar=1`,
+        "-f", file];
+}
+
+const stopGap = 8;
+const stopCornerMargin = 16;
+
+function stopOrigin(rect, size, monitor) {
+    if (!rect)
+        return { x: monitor.width - stopCornerMargin - size.width, y: stopCornerMargin };
+    const x = Math.round(Math.min(Math.max(rect.x + rect.width / 2 - size.width / 2, readoutEdgeMargin),
+        monitor.width - readoutEdgeMargin - size.width));
+    const below = rect.y + rect.height + stopGap;
+    if (below + size.height <= monitor.height - readoutEdgeMargin)
+        return { x: x, y: below };
+    const above = rect.y - stopGap - size.height;
+    if (above >= readoutEdgeMargin)
+        return { x: x, y: above };
+    return { x: monitor.width - stopCornerMargin - size.width, y: stopCornerMargin };
 }
 
 function regionText(region) {

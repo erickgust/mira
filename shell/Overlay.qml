@@ -89,6 +89,8 @@ PanelWindow {
                 overlay.session.moving = true;
             else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
                 overlay.session.confirm();
+            else if (event.key === Qt.Key_R)
+                overlay.session.recordMode = !overlay.session.recordMode;
         }
         Keys.onReleased: event => {
             if (!event.isAutoRepeat && event.key === Qt.Key_Space)
@@ -177,7 +179,7 @@ PanelWindow {
             height: overlay.selection ? overlay.selection.height + 2 : 0
             color: "transparent"
             border.width: 1
-            border.color: "#ffffff"
+            border.color: overlay.session.recordMode ? "#fd6164" : "#ffffff"
         }
 
         Repeater {
@@ -211,7 +213,57 @@ PanelWindow {
                 Rectangle {
                     anchors.fill: parent
                     radius: 4
-                    color: "#ffffff"
+                    color: overlay.session.recordMode ? "#fd6164" : "#ffffff"
+                }
+            }
+        }
+
+        Item {
+            visible: overlay.session.recordMode
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 16
+            width: badgeLabel.implicitWidth + 2 * 10 + 2
+            height: 25
+
+            RectangularShadow {
+                anchors.fill: parent
+                radius: 13
+                offset.y: 2
+                blur: 8
+                color: "#33000000"
+            }
+
+            RectangularShadow {
+                anchors.fill: parent
+                radius: 13
+                offset.y: 1
+                blur: 1
+                color: "#40000000"
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 13
+                color: "#3e2222"
+                border.width: 1
+                border.color: "#cc3d3d3d"
+            }
+
+            Row {
+                id: badgeLabel
+                anchors.centerIn: parent
+                spacing: 6
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 8
+                    height: 8
+                    radius: 4
+                    color: "#fd6164"
+                }
+
+                ReadoutText {
+                    text: "Record"
                 }
             }
         }

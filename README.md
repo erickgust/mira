@@ -36,6 +36,7 @@ Each press runs `qs -n -p ~/.local/share/mira`; `-n` makes a second press exit w
 - A Wayland compositor with wlr layer shell and screencopy, such as niri
 - Quickshell
 - ImageMagick (`magick`)
+- `wf-recorder` and `ffmpeg`, for recording
 - `wl-clipboard`, `xdg-utils`
 - The Onest font (`ttf-onest`)
 
@@ -62,6 +63,7 @@ qs -n -p shell
 /usr/lib/qt6/bin/qmltestrunner -platform offscreen -input shell/tests
 sh shell/tests/save_test.sh
 sh shell/tests/install_test.sh
+sh shell/tests/finish_test.sh
 /usr/lib/qt6/bin/qmllint shell/*.qml shell/*.js shell/tests/*.qml
 ```
 

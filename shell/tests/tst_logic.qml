@@ -174,6 +174,55 @@ TestCase {
         compare(Logic.fileName("2026-11-15 10-50-00", 2), "Screenshot from 2026-11-15 10-50-00 (2).png");
     }
 
+    function test_screencast_names_use_their_own_kind_and_extension() {
+        const names = Logic.candidates("2026-11-15 10-50-00", "Screencast", "mp4");
+        compare(names[0], "Screencast from 2026-11-15 10-50-00.mp4");
+        compare(names[1], "Screencast from 2026-11-15 10-50-00 (1).mp4");
+    }
+
+    function test_large_boxes_record_with_vaapi_through_the_crop_workaround() {
+        compare(Logic.recorderArgs("DP-2", rect(900, 300, 640, 360), rect(900, 300, 640, 360), "/v/t.mp4"),
+            ["-o", "DP-2", "-c", "h264_vaapi", "-d", "/dev/dri/renderD128", "-r", "60",
+             "-p", "colorspace=bt709", "-p", "color_primaries=bt709", "-p", "color_trc=bt709", "-p", "color_range=tv",
+             "-g", "0,300 1540x360", "-F", "crop=640:360:900:0,scale_vaapi=w=640:h=360:format=nv12:out_range=limited,setsar=1", "-f", "/v/t.mp4"]);
+    }
+
+    function test_odd_crop_offset_and_size_round_down_to_even() {
+        const args = Logic.recorderArgs("DP-2", rect(901, 301, 977, 361), rect(901, 301, 977, 361), "/v/t.mp4");
+        compare(args[args.indexOf("-g") + 1], "0,301 1878x361");
+        compare(args[args.indexOf("-F") + 1], "crop=976:360:900:0,scale_vaapi=w=976:h=360:format=nv12:out_range=limited,setsar=1");
+    }
+
+    function test_the_whole_monitor_records_with_vaapi_and_no_geometry() {
+        compare(Logic.recorderArgs("DP-2", null, rect(0, 0, 1920, 1080), "/v/t.mp4"),
+            ["-o", "DP-2", "-c", "h264_vaapi", "-d", "/dev/dri/renderD128", "-r", "60",
+             "-p", "colorspace=bt709", "-p", "color_primaries=bt709", "-p", "color_trc=bt709", "-p", "color_range=tv",
+             "-F", "scale_vaapi=format=nv12:out_range=limited", "-f", "/v/t.mp4"]);
+    }
+
+    function test_boxes_under_128_real_pixels_record_with_x264_and_no_damage() {
+        compare(Logic.recorderArgs("DP-2", rect(900, 300, 640, 100), rect(900, 300, 640, 100), "/v/t.mp4"),
+            ["-o", "DP-2", "-D", "-r", "60", "-g", "900,300 640x100", "-f", "/v/t.mp4"]);
+    }
+
+    function test_stop_button_sits_centred_under_the_box() {
+        compare(Logic.stopOrigin(rect(640, 360, 640, 360), { width: 80, height: 30 }, { width: 1920, height: 1080 }), { x: 920, y: 728 });
+    }
+
+    function test_stop_button_goes_above_when_there_is_no_room_below() {
+        compare(Logic.stopOrigin(rect(640, 600, 640, 450), { width: 80, height: 30 }, { width: 1920, height: 1080 }), { x: 920, y: 562 });
+    }
+
+    function test_stop_button_falls_back_to_the_corner() {
+        const monitor = { width: 1920, height: 1080 };
+        compare(Logic.stopOrigin(rect(0, 20, 1920, 1050), { width: 80, height: 30 }, monitor), { x: 1824, y: 16 });
+        compare(Logic.stopOrigin(null, { width: 80, height: 30 }, monitor), { x: 1824, y: 16 });
+    }
+
+    function test_stop_button_stays_on_screen_for_a_box_at_the_edge() {
+        compare(Logic.stopOrigin(rect(1900, 100, 20, 200), { width: 80, height: 30 }, { width: 1920, height: 1080 }), { x: 1832, y: 308 });
+    }
+
     function test_candidates_start_plain_then_count_up() {
         const names = Logic.candidates("2026-11-15 10-50-00");
         compare(names.length, Logic.maxNameAttempts);
