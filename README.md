@@ -29,7 +29,17 @@ Shots are saved as PNG to `Screenshots/Screenshot from YYYY-MM-DD HH-MM-SS.png` 
 
 ## Install
 
-mira is being rewritten from Rust to Quickshell, and the install step arrives with the switch-over. Until then the Rust version, at commit `49c3f07`, is the installed one.
+From a clone:
+
+```sh
+sh install.sh
+```
+
+This copies `shell/` to `~/.local/share/mira` and writes the `~/.local/bin/mira` launcher, replacing any earlier install. Then bind it in niri:
+
+```kdl
+Print repeat=false { spawn "mira"; }
+```
 
 ## Development
 
@@ -37,6 +47,7 @@ mira is being rewritten from Rust to Quickshell, and the install step arrives wi
 qs -n -p shell
 /usr/lib/qt6/bin/qmltestrunner -platform offscreen -input shell/tests
 sh shell/tests/save_test.sh
+sh shell/tests/install_test.sh
 /usr/lib/qt6/bin/qmllint shell/*.qml shell/*.js shell/tests/*.qml
 ```
 
