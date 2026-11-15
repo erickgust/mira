@@ -12,13 +12,14 @@ import "logic.js" as Logic
 ShellRoot {
     id: root
 
+    readonly property bool video: Quickshell.env("MIRA_KIND") === "video"
     readonly property string framePath: Quickshell.env("MIRA_FRAME")
     readonly property var region: Logic.parseRegion(Quickshell.env("MIRA_REGION"))
     readonly property string stamp: Quickshell.env("MIRA_STAMP")
     readonly property var targetScreen: Quickshell.screens.find(screen => screen.name === Quickshell.env("MIRA_SCREEN")) ?? Quickshell.screens[0]
     readonly property var cardSize: ({ width: 240, height: 135 })
     readonly property string screenshotsDir: `${Logic.localPath(StandardPaths.writableLocation(StandardPaths.PicturesLocation))}/Screenshots`
-    property string savedPath: ""
+    property string savedPath: video ? Quickshell.env("MIRA_FILE") : ""
     property bool hovered: false
     property bool dragging: false
     property bool closing: false
@@ -187,7 +188,28 @@ ShellRoot {
                         fillMode: Image.PreserveAspectCrop
                         smooth: true
                         mipmap: true
-                        Component.onCompleted: root.save()
+                        Component.onCompleted: root.video ? Quickshell.execDetached(["rm", "-f", root.framePath]) : root.save()
+                    }
+
+                    Rectangle {
+                        visible: root.video
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.margins: 6
+                        width: durationText.implicitWidth + 12
+                        height: 18
+                        radius: 9
+                        color: "#99000000"
+
+                        Text {
+                            id: durationText
+                            anchors.centerIn: parent
+                            text: Logic.duration(Number(Quickshell.env("MIRA_DURATION")))
+                            color: "white"
+                            font.family: "IBM Plex Mono"
+                            font.weight: Font.Medium
+                            font.pixelSize: 11
+                        }
                     }
 
                     Rectangle {
@@ -240,7 +262,7 @@ ShellRoot {
                 Drag.dragType: Drag.Automatic
                 Drag.supportedActions: Qt.CopyAction
                 Drag.mimeData: ({ "text/uri-list": Logic.fileUrl(root.savedPath) + "\r\n" })
-                Drag.imageSource: root.savedPath ? Logic.fileUrl(root.savedPath) : ""
+                Drag.imageSource: root.savedPath && !root.video ? Logic.fileUrl(root.savedPath) : ""
                 Drag.imageSourceSize: Qt.size(root.cardSize.width, root.cardSize.height)
                 Drag.onDragFinished: dropAction => {
                     root.dragging = false;

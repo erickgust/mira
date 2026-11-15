@@ -156,6 +156,19 @@ TestCase {
         compare(Logic.stamp(new Date(2026, 0, 5, 7, 8, 9)), "2026-01-05 07-08-09");
     }
 
+    function test_duration_is_minutes_and_seconds_under_an_hour() {
+        compare(Logic.duration(0), "0:00");
+        compare(Logic.duration(5), "0:05");
+        compare(Logic.duration(102), "1:42");
+        compare(Logic.duration(3599), "59:59");
+    }
+
+    function test_duration_adds_hours_from_an_hour() {
+        compare(Logic.duration(3600), "1:00:00");
+        compare(Logic.duration(3725), "1:02:05");
+        compare(Logic.duration(36000), "10:00:00");
+    }
+
     function test_file_names_follow_the_pattern() {
         compare(Logic.fileName("2026-11-15 10-50-00", 0), "Screenshot from 2026-11-15 10-50-00.png");
         compare(Logic.fileName("2026-11-15 10-50-00", 2), "Screenshot from 2026-11-15 10-50-00 (2).png");

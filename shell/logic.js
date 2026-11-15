@@ -141,6 +141,13 @@ function stamp(date) {
         + `${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
 }
 
+function duration(seconds) {
+    const pad = value => String(value).padStart(2, "0");
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor(seconds / 60) % 60;
+    return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds % 60)}` : `${minutes}:${pad(seconds % 60)}`;
+}
+
 function fileName(stamp, attempt) {
     return attempt === 0 ? `Screenshot from ${stamp}.png` : `Screenshot from ${stamp} (${attempt}).png`;
 }
