@@ -1,6 +1,6 @@
 # mira
 
-A personal screenshot tool for Wayland, in the spirit of CleanShot X. Built with Rust and GPUI for niri on Pond.
+A personal screenshot tool for Wayland, in the spirit of CleanShot X. Built as a Quickshell config for niri on Pond.
 
 Pressing the screenshot key freezes the screen and opens a selection overlay. Drag a box and release: the shot is saved and copied to the clipboard at once, and a thumbnail shows in the bottom-left corner for about five seconds.
 
@@ -13,7 +13,6 @@ Pressing the screenshot key freezes the screen and opens a selection overlay. Dr
 | Enter | Capture the whole monitor under the cursor |
 | Esc | Close without saving |
 | Click the thumbnail | Open the shot with `xdg-open` |
-| Drag the thumbnail out | Drop the saved file into another app |
 | Drag the thumbnail out | Drop the shot into a chat, Discord or a file manager |
 
 A plain click, or a box under 4 pixels on either side, is ignored.
@@ -23,27 +22,18 @@ Shots are saved as PNG to `Screenshots/Screenshot from YYYY-MM-DD HH-MM-SS.png` 
 ## Requirements
 
 - A Wayland compositor with wlr layer shell and screencopy, such as niri
+- Quickshell
 - `wl-clipboard`, `xdg-utils`
 - The Onest font (`ttf-onest`)
-- Vulkan, `libxkbcommon`, `fontconfig`
 
 ## Install
 
-```sh
-cargo install --git ssh://git@github.com/erickgust/mira.git --root ~/.local
-```
-
-Then bind it in niri:
-
-```kdl
-Print { spawn "mira"; }
-```
+mira is being rewritten from Rust to Quickshell, and the install step arrives with the switch-over. Until then the Rust version, at commit `49c3f07`, is the installed one.
 
 ## Development
 
 ```sh
-cargo test
-cargo run
+qs -p shell
 ```
 
 `design/mock.html` holds the visual mock.
