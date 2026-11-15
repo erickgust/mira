@@ -66,6 +66,57 @@
   --thumb-label-font-weight: 500;
   --thumb-label-line-height: 17px;
 
+  /* Version two: resize handles on a resting box */
+  --handle-size: 8px;
+  --handle-fill: #ffffffff;
+  --handle-outline-color: #00000040;
+  --handle-outline-width: 1px;
+  --handle-shadow: 0px 0px 0px var(--handle-outline-width) var(--handle-outline-color), 0px 1px 2px 0px #00000040;
+  --handle-hit-size: 16px;
+
+  /* Version two: zoom loupe */
+  --loupe-size: 120px;
+  --loupe-zoom: 8;
+  --loupe-radius: 12px;
+  --loupe-border-color: #3d3d3dcc;
+  --loupe-border-width: 1px;
+  --loupe-shadow: 0px 2px 8px 0px #00000033, 0px 1px 1px 0px #00000040;
+  --loupe-grid-color: #0000001f;
+  --loupe-center-color: #ffffffff;
+  --loupe-center-outline: #00000066;
+  --loupe-offset-x: 16px;
+  --loupe-offset-y: 16px;
+
+  /* Version two: record mode and recording */
+  --record-color: #fd6164ff;
+  --record-surface: #3e2222ff;
+  --record-badge-top: 16px;
+  --record-dot-size: 8px;
+  --record-badge-gap: 6px;
+  --stop-height: 30px;
+  --stop-radius: 15px;
+  --stop-padding-x: 12px;
+  --stop-gap: 8px;
+  --stop-icon-size: 10px;
+  --stop-icon-radius: 2px;
+  --stop-bg: #1d1d1dff;
+  --stop-bg-hover: #262626ff;
+  --stop-border-color: #3d3d3dcc;
+  --stop-text: #f8f9f9ff;
+  --stop-font-family: "IBM Plex Mono";
+  --stop-font-size: 13px;
+  --stop-box-gap: 8px;
+  --stop-corner-margin: 16px;
+
+  /* Version two: video card */
+  --duration-height: 18px;
+  --duration-radius: 9px;
+  --duration-padding-x: 6px;
+  --duration-inset: 6px;
+  --duration-bg: #00000099;
+  --duration-text: #ffffffff;
+  --duration-font-size: 11px;
+
   /* Mock page only, not part of the design */
   --mock-page-bg: #0b0b0bff;
   --mock-label-height: 56px;
@@ -183,6 +234,84 @@ Where each reused value came from (pond-shell)
   gap 6, radius 16), its fill from shell/themes/North.qml panelGradient (active theme),
   wallpaper from /usr/share/pond-interface/wallpaper/included/.
 -->
+<!--
+VERSION TWO SPEC NOTES (frames 6 to 12)
+
+Resting box and handles
+- After release the box stays. Eight handles: the four corners and the four edge midpoints,
+  each a --handle-size circle in --handle-fill with --handle-shadow, centred on the selection
+  border line (the 1px line just outside the selected pixels).
+- Each handle's hit area is a --handle-hit-size square centred on it, invisible. Corner hit
+  areas win over edge ones where they overlap; handles win over "inside the box".
+- When a side is shorter than 3 × --handle-hit-size (48px), the two edge-midpoint handles
+  on that axis are hidden, so the corners stay grabbable on small boxes.
+- While a box rests, the crosshair is hidden; the pointer shape says what a press does:
+  crosshair outside the box, move (four arrows) inside it, and on handles the diagonal
+  arrows for corners and the horizontal or vertical arrow for edges.
+- Readout while resting: anchored to the box's bottom-right corner with the version-one
+  offset and flip rules. While a handle or the box is dragged, it follows the cursor as in
+  version one. Size readout text and look are unchanged.
+- Confirm: Enter, or a double-click inside the box (Qt's double-click interval). There is
+  no button.
+
+Loupe
+- Shown whenever the overlay is drawing, following the cursor, in idle, drawing, resting
+  and dragging states alike.
+- A --loupe-size square with --loupe-radius corners, --loupe-border, --loupe-shadow. Inside,
+  the frozen image around the cursor, each real pixel drawn as a --loupe-zoom × --loupe-zoom
+  logical block with no smoothing (120 / 8 = 15 real pixels across at any scale), so the
+  cursor's real pixel sits in the centre block.
+  The loupe shows the frozen pixels undimmed, even where the overlay dims them, so their true
+  colour can be judged.
+- A 1px --loupe-grid-color grid on the block edges, and the centre block outlined 1px in
+  --loupe-center-color with a 1px --loupe-center-outline ring outside it.
+- Position: the loupe's bottom-left sits at (cursor.x + offset-x, cursor.y - offset-y), so it
+  is above right of the cursor while the readout is below right. Flip X like the readout
+  (right edge at cursor.x - offset-x). Flip Y near the top: top edge at cursor.y + offset-y,
+  and then, if the readout is also below, move the loupe to the other X side so the two
+  never overlap. Snap to whole logical pixels.
+- The real loupe shows frozen pixels, blocky. This mock scales the stand-in desktop, which
+  looks smooth; follow the notes, not the rendering.
+
+Record mode
+- R toggles it. In record mode a badge sits centred at the top of every monitor,
+  --record-badge-top from the top edge: the readout's pill (height, radius, padding, font)
+  with --record-surface fill, a --record-dot-size --record-color dot, --record-badge-gap,
+  then "Record" in the readout text colour.
+- In record mode the selection border and the handles' fill use --record-color instead of
+  white; outlines and shadows are unchanged. Nothing else changes.
+
+Recording
+- While recording, nothing of the overlay shows; only the stop button, a layer surface on
+  the recorded monitor that takes no keyboard focus.
+- Stop button: --stop-height pill, --stop-radius, --stop-bg (hover --stop-bg-hover), 1px
+  --stop-border-color, --readout-shadow, --stop-padding-x on both sides. Contents: a
+  --stop-icon-size --record-color square with --stop-icon-radius corners, --stop-gap, then
+  the elapsed time as m:ss (h:mm:ss past an hour) in --stop-font-family --stop-font-size
+  weight 500, --stop-text. Plex Mono keeps the width steady as digits change.
+  Pointer: hand. Click stops.
+- Position: centred under the recorded box, --stop-box-gap below its bottom edge, if it fits
+  with --readout-edge-margin to spare; else centred above the box the same way; else the
+  monitor's top-right corner, --stop-corner-margin from both edges. In the corner case it
+  is inside the recording. Accepted.
+
+Video card
+- The version-one card at 240 × 135, showing the frozen frame of the recorded box, plus a
+  duration badge: --duration-height pill, --duration-radius, --duration-bg,
+  --duration-padding-x, --duration-inset from the card's bottom-right corner, text m:ss in
+  --stop-font-family --duration-font-size weight 500, --duration-text. It sits under the
+  scrim and label and fades with the card. Hover, click, drag and timing as version one.
+
+Where the new values came from (pond-shell)
+- --record-color #FD6164 and --record-surface #3E2222: shell/battery/State.qml lowColor and
+  lowSurface at critical level, pond's only red.
+- --stop-bg-hover #262626: shell/themes/Unthemed.qml hover.
+- --stop-height 30 and --stop-radius 15: Pond/Screenshot/Preview.qml ActionButton.
+- --stop-font-family "IBM Plex Mono": shell/Theme.qml plexFontFamily.
+- --loupe-radius 12: the thumbnail's radius; loupe border and shadow: the readout's.
+- --handle-outline: the selection outline; handle size, hit size, loupe size and zoom,
+  badge, duration badge: mine, sized against the readout and card.
+-->
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--mock-page-bg); width: var(--screen-w); font-family: var(--font-family); }
@@ -272,6 +401,38 @@ body { background: var(--mock-page-bg); width: var(--screen-w); font-family: var
 .thumb-label { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; color: var(--thumb-label-text); font-size: var(--thumb-label-font-size); font-weight: var(--thumb-label-font-weight); line-height: var(--thumb-label-line-height); }
 .thumb.hover .thumb-scrim { background: var(--thumb-scrim-hover); }
 .thumb.hover .thumb-label { display: flex; }
+
+.handle { position: absolute; width: var(--handle-size); height: var(--handle-size); margin: calc(var(--handle-size) / -2) 0 0 calc(var(--handle-size) / -2); border-radius: 50%; background: var(--handle-fill); box-shadow: var(--handle-shadow); }
+.h-tl { left: calc(var(--sx) - 0.5px); top: calc(var(--sy) - 0.5px); }
+.h-t  { left: calc(var(--sx) + var(--sw) / 2); top: calc(var(--sy) - 0.5px); }
+.h-tr { left: calc(var(--sx) + var(--sw) + 0.5px); top: calc(var(--sy) - 0.5px); }
+.h-r  { left: calc(var(--sx) + var(--sw) + 0.5px); top: calc(var(--sy) + var(--sh) / 2); }
+.h-br { left: calc(var(--sx) + var(--sw) + 0.5px); top: calc(var(--sy) + var(--sh) + 0.5px); }
+.h-b  { left: calc(var(--sx) + var(--sw) / 2); top: calc(var(--sy) + var(--sh) + 0.5px); }
+.h-bl { left: calc(var(--sx) - 0.5px); top: calc(var(--sy) + var(--sh) + 0.5px); }
+.h-l  { left: calc(var(--sx) - 0.5px); top: calc(var(--sy) + var(--sh) / 2); }
+.record .selection { border-color: var(--record-color); }
+.record .handle { background: var(--record-color); }
+.readout.at-box { left: calc(var(--sx) + var(--sw) + var(--readout-offset-x)); top: calc(var(--sy) + var(--sh) + var(--readout-offset-y)); }
+
+.loupe { position: absolute; width: var(--loupe-size); height: var(--loupe-size); border-radius: var(--loupe-radius); border: var(--loupe-border-width) solid var(--loupe-border-color); box-shadow: var(--loupe-shadow); overflow: hidden; background: #000; left: calc(var(--cx) + var(--loupe-offset-x)); top: calc(var(--cy) - var(--loupe-offset-y) - var(--loupe-size)); }
+.loupe.flip-x { left: calc(var(--cx) - var(--loupe-offset-x) - var(--loupe-size)); }
+.loupe.flip-y { top: calc(var(--cy) + var(--loupe-offset-y)); }
+.loupe-image { position: absolute; left: 0; top: 0; width: var(--screen-w); height: var(--screen-h); transform-origin: 0 0; transform: scale(var(--loupe-zoom)) translate(calc((var(--cx) - 7.5px) * -1), calc((var(--cy) - 7.5px) * -1)); }
+.loupe-grid { position: absolute; inset: 0; background-image: linear-gradient(to right, var(--loupe-grid-color) 1px, transparent 1px), linear-gradient(to bottom, var(--loupe-grid-color) 1px, transparent 1px); background-size: 8px 8px; }
+.loupe-center { position: absolute; left: 55px; top: 55px; width: 10px; height: 10px; border: 1px solid var(--loupe-center-color); box-shadow: 0 0 0 1px var(--loupe-center-outline); }
+
+.badge { position: absolute; top: var(--record-badge-top); left: 50%; transform: translateX(-50%); height: var(--readout-height); padding: var(--readout-padding-y) var(--readout-padding-x); border: var(--readout-border-width) solid var(--readout-border-color); border-radius: var(--readout-radius); background: var(--record-surface); box-shadow: var(--readout-shadow); color: var(--readout-text); font-family: var(--font-family); font-size: var(--readout-font-size); font-weight: var(--readout-font-weight); line-height: var(--readout-line-height); display: flex; align-items: center; gap: var(--record-badge-gap); }
+.badge-dot { width: var(--record-dot-size); height: var(--record-dot-size); border-radius: 50%; background: var(--record-color); }
+
+.stop { position: absolute; height: var(--stop-height); padding: 0 var(--stop-padding-x); border-radius: var(--stop-radius); background: var(--stop-bg); border: 1px solid var(--stop-border-color); box-shadow: var(--readout-shadow); display: flex; align-items: center; gap: var(--stop-gap); color: var(--stop-text); font-family: var(--stop-font-family); font-size: var(--stop-font-size); font-weight: 500; }
+.stop.hover { background: var(--stop-bg-hover); }
+.stop.below { left: calc(var(--sx) + var(--sw) / 2); top: calc(var(--sy) + var(--sh) + var(--stop-box-gap)); transform: translateX(-50%); }
+.stop.corner { right: var(--stop-corner-margin); top: var(--stop-corner-margin); }
+.stop-icon { width: var(--stop-icon-size); height: var(--stop-icon-size); border-radius: var(--stop-icon-radius); background: var(--record-color); }
+.recorded-area { position: absolute; left: var(--sx); top: var(--sy); width: var(--sw); height: var(--sh); outline: 1px dashed #ffffff40; }
+
+.duration { position: absolute; right: var(--duration-inset); bottom: var(--duration-inset); height: var(--duration-height); padding: 0 var(--duration-padding-x); border-radius: var(--duration-radius); background: var(--duration-bg); color: var(--duration-text); font-family: var(--stop-font-family); font-size: var(--duration-font-size); font-weight: 500; line-height: var(--duration-height); }
 </style>
 </head>
 <body>
@@ -375,6 +536,78 @@ body { background: var(--mock-page-bg); width: var(--screen-w); font-family: var
 <div class="frame" data-desktop>
   <div class="thumb hover" style="--tw:240px; --th:135px; --sx:640px; --sy:360px; --shot-scale:0.375;">
     <div class="thumb-image" data-desktop></div>
+    <div class="thumb-scrim"></div>
+    <div class="thumb-label">Open</div>
+    <div class="thumb-border"></div>
+  </div>
+</div>
+
+<div class="label">6 · Box at rest with handles <span>box (640, 360) 640 × 360 after release, cursor inside at (960, 540) shows move; crosshair hidden; readout at the box's corner; loupe above right of the cursor</span></div>
+<div class="frame" data-desktop style="--sx:640px; --sy:360px; --sw:640px; --sh:360px; --cx:960px; --cy:540px;">
+  <div class="dim dim-top"></div>
+  <div class="dim dim-bottom"></div>
+  <div class="dim dim-left"></div>
+  <div class="dim dim-right"></div>
+  <div class="selection"></div>
+  <div class="handle h-tl"></div><div class="handle h-t"></div><div class="handle h-tr"></div><div class="handle h-r"></div>
+  <div class="handle h-br"></div><div class="handle h-b"></div><div class="handle h-bl"></div><div class="handle h-l"></div>
+  <div class="readout at-box">640 <span class="sep">×</span> 360</div>
+  <div class="loupe"><div class="loupe-image" data-desktop></div><div class="loupe-grid"></div><div class="loupe-center"></div></div>
+</div>
+
+<div class="label">7 · Resizing from the right edge <span>handle dragged to (1400, 540): box 760 × 360, readout follows the cursor, crosshair shows while dragging</span></div>
+<div class="frame" data-desktop style="--sx:640px; --sy:360px; --sw:760px; --sh:360px; --cx:1400px; --cy:540px;">
+  <div class="dim dim-top"></div>
+  <div class="dim dim-bottom"></div>
+  <div class="dim dim-left"></div>
+  <div class="dim dim-right"></div>
+  <div class="cross-v"></div>
+  <div class="cross-h"></div>
+  <div class="selection"></div>
+  <div class="handle h-tl"></div><div class="handle h-t"></div><div class="handle h-tr"></div><div class="handle h-r"></div>
+  <div class="handle h-br"></div><div class="handle h-b"></div><div class="handle h-bl"></div><div class="handle h-l"></div>
+  <div class="readout">760 <span class="sep">×</span> 360</div>
+  <div class="loupe"><div class="loupe-image" data-desktop></div><div class="loupe-grid"></div><div class="loupe-center"></div></div>
+</div>
+
+<div class="label">8 · Loupe near the top-right corner <span>idle, cursor at (1880, 40): loupe flipped on both axes so it stays on screen</span></div>
+<div class="frame" data-desktop style="--cx:1880px; --cy:40px;">
+  <div class="dim dim-full"></div>
+  <div class="cross-v"></div>
+  <div class="cross-h"></div>
+  <div class="loupe flip-x flip-y"><div class="loupe-image" data-desktop></div><div class="loupe-grid"></div><div class="loupe-center"></div></div>
+</div>
+
+<div class="label">9 · Record mode <span>R pressed; badge at the top, red border and handles; everything else as frame 6</span></div>
+<div class="frame record" data-desktop style="--sx:640px; --sy:360px; --sw:640px; --sh:360px; --cx:960px; --cy:540px;">
+  <div class="dim dim-top"></div>
+  <div class="dim dim-bottom"></div>
+  <div class="dim dim-left"></div>
+  <div class="dim dim-right"></div>
+  <div class="selection"></div>
+  <div class="handle h-tl"></div><div class="handle h-t"></div><div class="handle h-tr"></div><div class="handle h-r"></div>
+  <div class="handle h-br"></div><div class="handle h-b"></div><div class="handle h-bl"></div><div class="handle h-l"></div>
+  <div class="readout at-box">640 <span class="sep">×</span> 360</div>
+  <div class="loupe"><div class="loupe-image" data-desktop></div><div class="loupe-grid"></div><div class="loupe-center"></div></div>
+  <div class="badge"><div class="badge-dot"></div>Record</div>
+</div>
+
+<div class="label">10 · Recording a box <span>overlay gone; stop button under the box (dashed line marks the recorded area for this mock only)</span></div>
+<div class="frame" data-desktop style="--sx:640px; --sy:360px; --sw:640px; --sh:360px;">
+  <div class="recorded-area"></div>
+  <div class="stop below"><div class="stop-icon"></div>0:05</div>
+</div>
+
+<div class="label">11 · Recording the whole monitor <span>no room outside the area: stop button in the top-right corner, hovered, and part of the recording</span></div>
+<div class="frame" data-desktop>
+  <div class="stop corner hover"><div class="stop-icon"></div>1:42</div>
+</div>
+
+<div class="label">12 · Video card <span>card after a recording, frozen frame of the recorded box, duration badge bottom right</span></div>
+<div class="frame" data-desktop>
+  <div class="thumb" style="--tw:240px; --th:135px; --sx:640px; --sy:360px; --shot-scale:0.375;">
+    <div class="thumb-image" data-desktop></div>
+    <div class="duration">0:05</div>
     <div class="thumb-scrim"></div>
     <div class="thumb-label">Open</div>
     <div class="thumb-border"></div>
