@@ -4,35 +4,62 @@ import QtQuick
 import QtCore
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 import "logic.js" as Logic
 
 ShellRoot {
     id: root
 
-    readonly property var fixedRegion: ({ x: 0, y: 0, width: 960, height: 540 })
-    readonly property string framePath: `${Quickshell.env("XDG_RUNTIME_DIR")}/mira-${Quickshell.processId}-frame.png`
+    readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR")
     readonly property string screenshotsDir: `${Logic.localPath(StandardPaths.writableLocation(StandardPaths.PicturesLocation))}/Screenshots`
+    property int capturedScreens: 0
+    readonly property bool captured: capturedScreens === Quickshell.screens.length
+    property bool moving: false
+    property string pointerScreen: Quickshell.screens[0].name
+    property bool closing: false
+    property bool hidden: false
+    property var shot: null
+    property var savedFrames: ({})
+    property var frameSizes: ({})
+
+    function framePath(screenName) {
+        return `${runtimeDir}/mira-${Quickshell.processId}-${screenName}-frame.png`;
+    }
 
     function exit() {
+        closing = true;
+        Quickshell.execDetached(["sh", "-c", 'rm -f "$1"/mira-"$2"-*-frame.png', "sh", runtimeDir, String(Quickshell.processId)]);
         Quickshell.execDetached(["qs", "kill", "--pid", String(Quickshell.processId)]);
     }
 
     function fail(message) {
         console.error("mira:", message);
-        Quickshell.execDetached(["rm", "-f", framePath]);
         exit();
     }
 
-    function shoot(view, screen) {
-        const size = view.sourceSize;
-        const region = Logic.toReal(fixedRegion, size.width / screen.width, size.width, size.height);
-        const names = Logic.candidates(Logic.stamp(new Date()));
-        view.grabToImage(result => {
-            if (!result.saveToFile(framePath))
-                return fail(`could not write ${framePath}`);
-            saving.exec(["sh", Quickshell.shellPath("save.sh"), framePath, screenshotsDir, Logic.geometry(region), ...names]);
-        }, size);
+    function frameSaved(screenName) {
+        savedFrames[screenName] = true;
+        trySave();
+    }
+
+    function take(screenName, region) {
+        if (shot || closing)
+            return;
+        shot = { screenName: screenName, region: region, stamp: Logic.stamp(new Date()) };
+        trySave();
+    }
+
+    function takeWholeScreen() {
+        const size = frameSizes[pointerScreen];
+        if (size)
+            take(pointerScreen, { x: 0, y: 0, width: size.width, height: size.height });
+    }
+
+    function trySave() {
+        if (!shot || hidden || !savedFrames[shot.screenName])
+            return;
+        hidden = true;
+        saving.exec(["sh", Quickshell.shellPath("save.sh"), framePath(shot.screenName), screenshotsDir,
+            Logic.geometry(shot.region), ...Logic.candidates(shot.stamp)]);
     }
 
     Process {
@@ -66,39 +93,8 @@ ShellRoot {
     Variants {
         model: Quickshell.screens
 
-        PanelWindow {
-            id: panel
-
-            required property ShellScreen modelData
-
-            screen: modelData
-            color: "transparent"
-            anchors {
-                left: true
-                right: true
-                top: true
-                bottom: true
-            }
-
-            WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.namespace: "mira"
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-            WlrLayershell.exclusionMode: ExclusionMode.Ignore
-
-            Item {
-                anchors.fill: parent
-                opacity: 0
-
-                ScreencopyView {
-                    id: view
-                    anchors.fill: parent
-                    captureSource: panel.modelData
-                    live: false
-                    paintCursor: false
-                    onHasContentChanged: if (hasContent && panel.modelData === Quickshell.screens[0])
-                        root.shoot(view, panel.modelData)
-                }
-            }
+        Overlay {
+            session: root
         }
     }
 }

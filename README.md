@@ -34,7 +34,7 @@ mira is being rewritten from Rust to Quickshell, and the install step arrives wi
 ## Development
 
 ```sh
-qs -p shell
+qs -n -p shell
 /usr/lib/qt6/bin/qmltestrunner -platform offscreen -input shell/tests
 sh shell/tests/save_test.sh
 /usr/lib/qt6/bin/qmllint shell/*.qml shell/*.js shell/tests/*.qml
