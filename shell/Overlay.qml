@@ -331,6 +331,7 @@ PanelWindow {
                 : { x: 0, y: 0 }
 
             visible: overlay.pointer !== null && overlay.session.pointerScreen === overlay.modelData.name
+                && overlay.gesture !== null && overlay.gesture.handle !== "inside"
             x: origin.x
             y: origin.y
             width: 120
