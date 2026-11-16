@@ -25,6 +25,7 @@ ShellRoot {
     property bool dragging: false
     property var dragImage
     property bool closing: false
+    property bool replaced: false
 
     function exit() {
         Quickshell.execDetached(["qs", "kill", "--pid", String(Quickshell.processId)]);
@@ -68,6 +69,8 @@ ShellRoot {
                 return root.fail(savingErrors.text.trim() || `save.sh exited with ${code}`);
             root.savedPath = savedOutput.text.trim();
             console.log(root.savedPath);
+            if (root.replaced)
+                return root.exit();
             copying.exec(["sh", "-c", 'wl-copy --type image/png < "$1"', "sh", root.savedPath]);
         }
     }
@@ -83,6 +86,16 @@ ShellRoot {
         }
     }
 
+    IpcHandler {
+        target: "card"
+
+        function replace(): void {
+            root.replaced = true;
+            if (root.savedPath)
+                root.exit();
+        }
+    }
+
     Dismissal {
         ready: root.savedPath !== "" && !root.closing
         held: root.hovered || root.dragging
@@ -90,6 +103,7 @@ ShellRoot {
     }
 
     PanelWindow {
+        visible: !root.replaced
         screen: root.targetScreen
         color: "transparent"
         implicitWidth: 10 + root.cardSize.width + 40

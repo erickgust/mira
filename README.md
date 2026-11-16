@@ -26,7 +26,7 @@ The thumbnail stays while the pointer is over it or a drag is in progress, then 
 Each press runs `qs -n -p ~/.local/share/mira`; `-n` makes a second press exit while an overlay is open.
 
 1. `shell.qml` opens one see-through overlay per monitor, captures each monitor with Quickshell's `ScreencopyView`, and only then draws the frozen image, so the overlay never appears in the shot. `Overlay.qml` handles the selection.
-2. Each frozen frame is written to `$XDG_RUNTIME_DIR` while you select. On release the overlay vanishes and hands the shot to `thumbnail.qml`, a separate Quickshell instance, then exits. Starting the thumbnail removes any older one.
+2. Each frozen frame is written to `$XDG_RUNTIME_DIR` while you select. On release the overlay vanishes and hands the shot to `thumbnail.qml`, a separate Quickshell instance, then exits. Starting the thumbnail hides any older one, which exits once its shot is saved, without copying it over the new one.
 3. `thumbnail.qml` shows the card straight from the frame, then runs `save.sh`, which crops with ImageMagick and claims a free file name with `ln` so nothing is ever overwritten, and copies the result with `wl-copy`.
 
 `logic.js` holds the pure logic (pixel conversion, the selection, file names), and `Dismissal.qml` the five-second timer.
@@ -64,6 +64,7 @@ qs -n -p shell
 sh shell/tests/save_test.sh
 sh shell/tests/install_test.sh
 sh shell/tests/finish_test.sh
+sh shell/tests/card_test.sh
 /usr/lib/qt6/bin/qmllint shell/*.qml shell/*.js shell/tests/*.qml
 ```
 

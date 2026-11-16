@@ -82,7 +82,7 @@ ShellRoot {
             `MIRA_REGION=${Logic.regionText(shot.region)}`,
             `MIRA_SCREEN=${shot.screenName}`,
             `MIRA_STAMP=${shot.stamp}`,
-            "sh", "-c", 'qs kill -p "$1" >/dev/null 2>&1; exec qs -p "$1"', "sh", Quickshell.shellPath("thumbnail.qml")]);
+            "sh", Quickshell.shellPath("card.sh")]);
         exit(frame);
     }
 

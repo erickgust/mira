@@ -15,7 +15,7 @@ HOME="$home" sh "$repo/install.sh" >/dev/null
 
 target="$home/.local/share/mira"
 launcher="$home/.local/bin/mira"
-for file in shell.qml thumbnail.qml record.qml Overlay.qml logic.js save.sh claim.sh finish.sh; do
+for file in shell.qml thumbnail.qml record.qml Overlay.qml logic.js save.sh claim.sh finish.sh card.sh; do
     [ -f "$target/$file" ] || fail "$file was not installed"
 done
 [ ! -e "$target/tests" ] || fail "tests were installed"

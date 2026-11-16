@@ -86,7 +86,7 @@ ShellRoot {
                 `MIRA_REGION=${root.regionText}`,
                 `MIRA_SCREEN=${root.targetScreen.name}`,
                 `MIRA_DURATION=${root.elapsed}`,
-                "sh", "-c", 'qs kill -p "$1" >/dev/null 2>&1; exec qs -p "$1"', "sh", Quickshell.shellPath("thumbnail.qml")]);
+                "sh", Quickshell.shellPath("card.sh")]);
             root.exit();
         }
     }
