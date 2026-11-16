@@ -21,7 +21,9 @@ ShellRoot {
     readonly property string screenshotsDir: `${Logic.localPath(StandardPaths.writableLocation(StandardPaths.PicturesLocation))}/Screenshots`
     property string savedPath: video ? Quickshell.env("MIRA_FILE") : ""
     property bool hovered: false
+    property bool lifting: false
     property bool dragging: false
+    property var dragImage
     property bool closing: false
 
     function exit() {
@@ -153,7 +155,7 @@ ShellRoot {
 
             Item {
                 anchors.fill: parent
-                opacity: root.dragging ? 0.5 : 1
+                opacity: root.dragging ? 0 : 1
 
                 Repeater {
                     model: [
@@ -174,48 +176,75 @@ ShellRoot {
                     }
                 }
 
-                ClippingRectangle {
+                Item {
+                    id: face
                     anchors.fill: parent
-                    radius: 12
-                    color: "#707070"
 
-                    Image {
+                    ClippingRectangle {
                         anchors.fill: parent
-                        source: Logic.fileUrl(root.framePath)
-                        sourceClipRect: Qt.rect(root.region.x, root.region.y, root.region.width, root.region.height)
-                        asynchronous: false
-                        cache: false
-                        fillMode: Image.PreserveAspectCrop
-                        smooth: true
-                        mipmap: true
-                        Component.onCompleted: root.video ? Quickshell.execDetached(["rm", "-f", root.framePath]) : root.save()
-                    }
+                        radius: 12
+                        color: "#707070"
 
-                    Rectangle {
-                        visible: root.video
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.margins: 6
-                        width: durationText.implicitWidth + 12
-                        height: 18
-                        radius: 9
-                        color: "#99000000"
+                        Image {
+                            anchors.fill: parent
+                            source: Logic.fileUrl(root.framePath)
+                            sourceClipRect: Qt.rect(root.region.x, root.region.y, root.region.width, root.region.height)
+                            asynchronous: false
+                            cache: false
+                            fillMode: Image.PreserveAspectCrop
+                            smooth: true
+                            mipmap: true
+                            Component.onCompleted: root.video ? Quickshell.execDetached(["rm", "-f", root.framePath]) : root.save()
+                        }
 
-                        Text {
-                            id: durationText
-                            anchors.centerIn: parent
-                            text: Logic.duration(Number(Quickshell.env("MIRA_DURATION")))
-                            color: "white"
-                            font.family: "IBM Plex Mono"
-                            font.weight: Font.Medium
-                            font.pixelSize: 11
+                        Rectangle {
+                            visible: root.video
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 6
+                            width: durationText.implicitWidth + 12
+                            height: 18
+                            radius: 9
+                            color: "#99000000"
+
+                            Text {
+                                id: durationText
+                                anchors.centerIn: parent
+                                text: Logic.duration(Number(Quickshell.env("MIRA_DURATION")))
+                                color: "white"
+                                font.family: "IBM Plex Mono"
+                                font.weight: Font.Medium
+                                font.pixelSize: 11
+                            }
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            color: "black"
+                            opacity: root.hovered && !root.lifting ? 0.5 : 0.1
+
+                            Behavior on opacity {
+                                enabled: !root.lifting
+
+                                NumberAnimation {
+                                    duration: 120
+                                    easing.type: Easing.OutCubic
+                                }
+                            }
                         }
                     }
 
-                    Rectangle {
-                        anchors.fill: parent
-                        color: "black"
-                        opacity: root.hovered ? 0.5 : 0.1
+                    Text {
+                        anchors.centerIn: parent
+                        visible: !root.lifting
+                        opacity: root.hovered ? 1 : 0
+                        text: "Open"
+                        color: "white"
+                        font.family: "Onest"
+                        font.weight: Font.Medium
+                        font.pixelSize: 13
+                        lineHeightMode: Text.FixedHeight
+                        lineHeight: 17
 
                         Behavior on opacity {
                             NumberAnimation {
@@ -224,34 +253,14 @@ ShellRoot {
                             }
                         }
                     }
-                }
 
-                Text {
-                    anchors.centerIn: parent
-                    visible: !root.dragging
-                    opacity: root.hovered ? 1 : 0
-                    text: "Open"
-                    color: "white"
-                    font.family: "Onest"
-                    font.weight: Font.Medium
-                    font.pixelSize: 13
-                    lineHeightMode: Text.FixedHeight
-                    lineHeight: 17
-
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: 120
-                            easing.type: Easing.OutCubic
-                        }
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 12
+                        color: "transparent"
+                        border.width: 1
+                        border.color: "#24ffffff"
                     }
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 12
-                    color: "transparent"
-                    border.width: 1
-                    border.color: "#24ffffff"
                 }
             }
 
@@ -262,12 +271,11 @@ ShellRoot {
                 Drag.dragType: Drag.Automatic
                 Drag.supportedActions: Qt.CopyAction
                 Drag.mimeData: ({ "text/uri-list": Logic.fileUrl(root.savedPath) + "\r\n" })
-                Drag.imageSource: root.savedPath && !root.video ? Logic.fileUrl(root.savedPath) : ""
-                Drag.imageSourceSize: Qt.size(root.cardSize.width, root.cardSize.height)
                 Drag.onDragFinished: dropAction => {
-                    root.dragging = false;
                     if (dropAction !== Qt.IgnoreAction)
-                        root.close();
+                        return root.close();
+                    root.dragging = false;
+                    root.lifting = false;
                 }
             }
 
@@ -289,9 +297,15 @@ ShellRoot {
                     if (Math.hypot(mouse.x - pressedAt.x, mouse.y - pressedAt.y) < Qt.styleHints.startDragDistance)
                         return;
                     dragStarted = true;
-                    root.dragging = true;
-                    dragSource.Drag.hotSpot = pressedAt;
-                    dragSource.Drag.active = true;
+                    root.lifting = true;
+                    const hotSpot = pressedAt;
+                    face.grabToImage(result => {
+                        root.dragImage = result;
+                        dragSource.Drag.imageSource = result.url;
+                        dragSource.Drag.hotSpot = hotSpot;
+                        root.dragging = true;
+                        dragSource.Drag.active = true;
+                    });
                 }
                 onClicked: {
                     if (!dragStarted)
