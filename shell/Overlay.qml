@@ -87,7 +87,7 @@ PanelWindow {
                 overlay.session.exit();
             else if (event.key === Qt.Key_Space)
                 overlay.session.moving = true;
-            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.matches(StandardKey.Copy))
                 overlay.session.confirm();
             else if (event.key === Qt.Key_R)
                 overlay.session.recordMode = !overlay.session.recordMode;
