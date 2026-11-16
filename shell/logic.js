@@ -167,7 +167,8 @@ function recorderArgs(output, rect, real, file) {
     if (!rect)
         return [...vaapi, "-F", "scale_vaapi=format=nv12:out_range=limited", "-f", file];
     const even = value => value - value % 2;
-    const [x, width, height] = [even(real.x), even(real.width), even(real.height)];
+    const x = real.x + real.x % 2;
+    const [width, height] = [even(real.width - (x - real.x)), even(real.height)];
     return [...vaapi,
         "-g", `0,${rect.y} ${rect.x + rect.width}x${rect.height}`,
         "-F", `crop=${width}:${height}:${x}:0,scale_vaapi=w=${width}:h=${height}:format=nv12:out_range=limited,setsar=1`,

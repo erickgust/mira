@@ -187,10 +187,12 @@ TestCase {
              "-g", "0,300 1540x360", "-F", "crop=640:360:900:0,scale_vaapi=w=640:h=360:format=nv12:out_range=limited,setsar=1", "-f", "/v/t.mp4"]);
     }
 
-    function test_odd_crop_offset_and_size_round_down_to_even() {
+    function test_odd_crop_offset_and_size_round_to_even_inside_the_box() {
         const args = Logic.recorderArgs("DP-2", rect(901, 301, 977, 361), rect(901, 301, 977, 361), "/v/t.mp4");
         compare(args[args.indexOf("-g") + 1], "0,301 1878x361");
-        compare(args[args.indexOf("-F") + 1], "crop=976:360:900:0,scale_vaapi=w=976:h=360:format=nv12:out_range=limited,setsar=1");
+        compare(args[args.indexOf("-F") + 1], "crop=976:360:902:0,scale_vaapi=w=976:h=360:format=nv12:out_range=limited,setsar=1");
+        const narrow = Logic.recorderArgs("DP-2", rect(901, 301, 976, 360), rect(901, 301, 976, 360), "/v/t.mp4");
+        compare(narrow[narrow.indexOf("-F") + 1], "crop=974:360:902:0,scale_vaapi=w=974:h=360:format=nv12:out_range=limited,setsar=1");
     }
 
     function test_the_whole_monitor_records_with_vaapi_and_no_geometry() {
