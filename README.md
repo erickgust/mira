@@ -10,7 +10,7 @@ Pressing the screenshot key freezes the screen and opens a selection overlay. Dr
 |---|---|
 | Drag and release | Capture the box |
 | Hold Space while dragging | Move the box instead of resizing it |
-| Enter or Ctrl+C | Capture the whole monitor under the cursor |
+| Enter or Ctrl+C | Capture the box, or the whole monitor under the cursor when there is no box |
 | Esc | Close without saving |
 | Click the thumbnail | Open the shot with `xdg-open` |
 | Drag the thumbnail out | Drop the shot into a chat, Discord or a file manager |
