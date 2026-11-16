@@ -48,7 +48,7 @@ ShellRoot {
             if (code !== 0)
                 return root.fail(`could not create ${root.screencastsDir}`);
             root.startedAt = Date.now();
-            recorder.exec(["wf-recorder", ...Logic.recorderArgs(root.targetScreen.name, root.rect, root.region, root.recordingPath)]);
+            recorder.exec(["sh", "-c", 'exec wf-recorder "$@"', "sh", ...Logic.recorderArgs(root.targetScreen.name, root.rect, root.region, root.recordingPath)]);
         }
     }
 
