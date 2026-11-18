@@ -80,7 +80,6 @@ ShellRoot {
             if (root.replaced)
                 return root.exit();
             copying.exec(["sh", "-c", 'wl-copy --type image/png < "$1"', "sh", root.savedPath]);
-            root.handOff();
         }
     }
 
@@ -104,6 +103,7 @@ ShellRoot {
         onExited: code => {
             if (code !== 0)
                 console.error("mira: wl-copy:", copyingErrors.text.trim() || `exited with ${code}`);
+            root.handOff();
         }
     }
 
