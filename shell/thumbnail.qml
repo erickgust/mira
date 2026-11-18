@@ -26,6 +26,7 @@ ShellRoot {
     property var dragImage
     property bool closing: false
     property bool replaced: false
+    property bool fallback: false
 
     function exit() {
         Quickshell.execDetached(["qs", "kill", "--pid", String(Quickshell.processId)]);
@@ -39,6 +40,13 @@ ShellRoot {
 
     function save() {
         saving.exec(["sh", Quickshell.shellPath("save.sh"), framePath, screenshotsDir, Logic.geometry(region), ...Logic.candidates(stamp)]);
+    }
+
+    function handOff() {
+        const ipc = ["qs", "-c", "pond-shell", "ipc", "call", "mira"];
+        handing.exec(video
+            ? [...ipc, "video", savedPath, framePath, Quickshell.env("MIRA_REGION"), Logic.duration(Number(Quickshell.env("MIRA_DURATION"))), targetScreen.name]
+            : [...ipc, "screenshot", savedPath, targetScreen.name]);
     }
 
     function close() {
@@ -72,6 +80,19 @@ ShellRoot {
             if (root.replaced)
                 return root.exit();
             copying.exec(["sh", "-c", 'wl-copy --type image/png < "$1"', "sh", root.savedPath]);
+            root.handOff();
+        }
+    }
+
+    Process {
+        id: handing
+        onExited: code => {
+            if (code === 0)
+                return root.exit();
+            if (root.video)
+                Quickshell.execDetached(["rm", "-f", root.framePath]);
+            root.fallback = true;
+            enter.start();
         }
     }
 
@@ -97,13 +118,13 @@ ShellRoot {
     }
 
     Dismissal {
-        ready: root.savedPath !== "" && !root.closing
+        ready: root.fallback && !root.closing
         held: root.hovered || root.dragging
         onTriggered: root.close()
     }
 
     PanelWindow {
-        visible: !root.replaced
+        visible: root.fallback && !root.replaced
         screen: root.targetScreen
         color: "transparent"
         implicitWidth: 10 + root.cardSize.width + 40
@@ -137,7 +158,6 @@ ShellRoot {
 
             ParallelAnimation {
                 id: enter
-                running: true
 
                 NumberAnimation {
                     target: card
@@ -208,7 +228,7 @@ ShellRoot {
                             fillMode: Image.PreserveAspectCrop
                             smooth: true
                             mipmap: true
-                            Component.onCompleted: root.video ? Quickshell.execDetached(["rm", "-f", root.framePath]) : root.save()
+                            Component.onCompleted: root.video ? root.handOff() : root.save()
                         }
 
                         Rectangle {
